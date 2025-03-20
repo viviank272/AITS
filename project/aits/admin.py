@@ -1,5 +1,5 @@
 from django.contrib import admin
 
-from .models import Role, Departments, Group, User,Issues, IssueCategory, IssueStatus, Priority
+from .models import User
 
-admin.site.register(Departments)
+admin.site.register(User)
