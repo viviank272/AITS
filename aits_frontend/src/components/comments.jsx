@@ -1,5 +1,5 @@
 import { useState } from "react";
-
+import "/.comments.css";
 const Comments = ({ issueId }) => {
   const [comments, setComments] = useState([
     { id: 1, content: "This is a comment.", user: "John" },
