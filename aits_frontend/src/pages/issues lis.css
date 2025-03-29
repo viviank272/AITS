@@ -10,7 +10,7 @@
   
   .issues-container h2 {
     font-size: 1.8em;
-    color: #333;
+    color: #453;
     margin-bottom: 20px;
   }
   
@@ -23,7 +23,7 @@
   .issues-container li {
     padding: 10px;
     margin-bottom: 10px;
-    border: 1px solid #ddd;
+    border: 1px solid #fff;
     border-radius: 3px;
     background-color: #fff;
   }

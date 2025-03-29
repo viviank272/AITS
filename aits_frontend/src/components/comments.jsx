@@ -17,7 +17,7 @@ const Comments = ({ issueId }) => {
 
   return (
     <div>
-      <h3>Comments</h3>
+      <h3>Comment</h3>
       <ul>
         {comments.map((comment) => (
           <li key={comment.id}><strong>{comment.user}:</strong> {comment.content}</li>
