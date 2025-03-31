@@ -4,7 +4,7 @@ import { ListGroup } from "react-bootstrap";
 
 const StudentSidebar = () => {
   return (
-    <div className="bg-primary text-white vh-100 p-3">
+    <div className="bg-primary text-black vh-100 p-3">
       <h4>Student Panel</h4>
       <ListGroup variant="flush">
         <ListGroup.Item className="bg-primary border-0">
