@@ -8,7 +8,7 @@ const StudentSidebar = () => {
       <h4>Student Panel</h4>
       <ListGroup variant="flush">
         <ListGroup.Item className="bg-primary border-0">
-          <Link to="/student-dashboard" className="text-white">Dashboard</Link>
+          <Link to="/student-dashboard" className="text-black">Dashboard</Link>
         </ListGroup.Item>
         <ListGroup.Item className="bg-primary border-0">
           <Link to="/courses" className="text-white">My Courses</Link>
