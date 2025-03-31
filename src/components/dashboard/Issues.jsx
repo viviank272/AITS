@@ -5,7 +5,7 @@ const Issues =() =>{
     return(
         <Container className="mt-4">
             <h2>Track Issues</h2>
-            <p>Monitor and resolve academic complaints</p>
+            <p> Monitor and resolve academic complaints</p>
         </Container>
     );
 };
