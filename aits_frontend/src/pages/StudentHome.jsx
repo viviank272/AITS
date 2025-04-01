@@ -5,9 +5,7 @@ import StudentDashboard from './StudentDashboard'
 import CreateIssue from './issues/CreateIssue'
 import Issues from './student/Issues'
 import IssueDetails from './issues/IssueDetails'
-import Messages from './student/Messages'
 import Notifications from './student/Notifications'
-import Documents from './student/Documents'
 import Settings from './student/Settings'
 
 const StudentHome = () => {
@@ -24,9 +22,7 @@ const StudentHome = () => {
             <Route path="track" element={<div>Issue Tracking</div>} />
           </Route>
         </Route>
-        <Route path="messages" element={<Messages />} />
         <Route path="notifications" element={<Notifications />} />
-        <Route path="documents" element={<Documents />} />
         <Route path="settings" element={<Settings />} />
         <Route path="*" element={<Navigate to="." replace />} />
       </Route>

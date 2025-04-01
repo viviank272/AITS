@@ -216,7 +216,7 @@ function Issues() {
                     Priority
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Created
+                    Date & Time Created
                   </th>
                   <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
@@ -240,10 +240,12 @@ function Issues() {
                           {issue.title}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {issue.category_name || 
-                            (issue.category && typeof issue.category === 'object' && issue.category.name ? 
-                              issue.category.name : 
-                              (typeof issue.category === 'number' ? `Category ID: ${issue.category}` : 'N/A'))}
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                            {issue.category_name || 
+                              (issue.category && typeof issue.category === 'object' && issue.category.name ? 
+                                issue.category.name : 
+                                (typeof issue.category === 'number' ? `Category ID: ${issue.category}` : 'N/A'))}
+                          </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {(() => {
@@ -311,7 +313,7 @@ function Issues() {
                           })()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(issue.created_at).toLocaleDateString()}
+                          {new Date(issue.created_at).toLocaleString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                           <Link 
