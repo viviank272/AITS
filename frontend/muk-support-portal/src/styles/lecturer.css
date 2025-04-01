@@ -1,0 +1,28 @@
+@import './variables.css';
+
+.lecturer-container .sidebar {
+  background-color: var(--lecturer-primary-color);
+}
+
+.lecturer-container .action-button {
+  background-color: var(--lecturer-primary-color);
+}
+
+.lecturer-container .action-button:hover {
+  background-color: var(--lecturer-secondary-color);
+}
+
+.lecturer-container .header h1 {
+  color: var(--lecturer-primary-color);
+}
+
+.lecturer-container .tab.active {
+  color: var(--lecturer-primary-color);
+  border-bottom: 2px solid var(--lecturer-primary-color);
+}
+
+.lecturer-container .notification-badge {
+  background-color: var(--lecturer-accent-color);
+}
+
+/* Additional lecturer-specific styles can be added here */
