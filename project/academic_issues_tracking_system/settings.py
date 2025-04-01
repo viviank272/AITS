@@ -76,11 +76,11 @@ DATABASES = {
 
 # Email Configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 465
-EMAIL_USE_SSL = True  # Use SSL instead of TLS for port 465
-EMAIL_HOST_USER = 'vas@mcash.ug'
-EMAIL_HOST_PASSWORD = 'sa7A_6U9Bp'
+EMAIL_HOST = 
+EMAIL_PORT = 
+EMAIL_USE_SSL = # Use SSL instead of TLS for port 465
+EMAIL_HOST_USER = 
+EMAIL_HOST_PASSWORD = 
 
 #REST Framework
 REST_FRAMEWORK = {
