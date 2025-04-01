@@ -27,7 +27,7 @@ Including another URLconf
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from aits.views import RegisterView, LoginView, IssueViewSet, CommentViewSet, NotificationViewSet, DashboardStats
+from aits.views import RegisterView, LoginView, IssueViewSet, CommentViewSet, NotificationViewSet, DashboardStats,CreateIssueView,AssignIssueView,ResolveIssueView
 
 router = DefaultRouter()
 router.register(r'issues', IssueViewSet)
@@ -38,5 +38,8 @@ urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
     path('login/', LoginView.as_view(), name='login'),
     path('dashboard-stats/', DashboardStats.as_view(), name='dashboard-stats'),
+    path('create-issue/', CreateIssueView.as_view(), name='create-issue'),
+    path('assign-issue/', AssignIssueView.as_view(), name='assign-issue'),
+    path('resolve-issue/', ResolveIssueView.as_view(), name='resolve-issue'),
     path('', include(router.urls)),
 ]
