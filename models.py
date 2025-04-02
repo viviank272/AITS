@@ -24,7 +24,7 @@ class Department(models.Model):
 
 class Role(models.Model):
     role_id = models.AutoField(primary_key=True)
-    role_name = models.CharField(max_length=100, unique=True)
+    role_name = models.CharField(max_length=50, unique=True)
     description = models.TextField()
     permissions = models.JSONField() 
     created_at = models.DateTimeField(auto_now_add=True)
