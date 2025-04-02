@@ -12,7 +12,7 @@ class College(models.Model):
 
 class Department(models.Model):
     department_id = models.AutoField(primary_key=True)
-    department_name = models.CharField(max_length=255, unique=True)
+    department_name = models.CharField(max_length=100, unique=True)
     description = models.TextField()
     head_user_id = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True) 
     college_id = models.ForeignKey(College, on_delete=models.CASCADE) 
