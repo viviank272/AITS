@@ -42,6 +42,8 @@ class User(models.Model):
     role_id = models.IntegerField()
     department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name="users)
     created_at = models.DateTimeField(auto_now_add=True)
+     is_active = models.BooleanField(default=True) 
+    user_type = models.CharField(max_length=50, choices=[('staff', 'Staff'), ('student', 'Student'), ('faculty', 'Faculty')])
 
     def __str__(self):
         return f"{self.username} ({self.full_name})"
