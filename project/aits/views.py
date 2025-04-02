@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import get_user_model, authenticate, login
 from django.core.mail import send_mail
+from rest_framework.permissions import AllowAny, IsAuthenticated
 import random
 import string
 from .models import Issue, Comment, Notification
@@ -14,42 +15,30 @@ User = get_user_model()
 
 
 class CreateIssueView(APIView):
-   # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        # logger.info("Entering CreateIssueView.post")
-        # logger.info(f"Request user: {request.user}, Auth: {request.auth}, Headers: {request.headers}")
-        # if request.user.role != 'student':
-        #     logger.info(f"User {request.user} is not a student, role: {request.user.role}")
-        #     return Response(
-        #         {'error': 'Only students can create issues'},
-        #         status=status.HTTP_403_FORBIDDEN
-        #     )
         data = request.data.copy()
-        data['student'] = 3
+        data['student'] = request.user.id
+        data['status'] = 'open'  # Default status for new issues
         serializer = IssueSerializer(data=data)
         if serializer.is_valid():
-            logger.info("Serializer is valid, saving issue")
-            
             try:
                 head_of_department = User.objects.get(
-                    role='head_of_department',
-                    department= 'COCIS'
-                )
+                role='head_of_department',
+                        department= 'COCIS'
+                    )
                 send_mail(
-                    'New Issue Reported',
-                    f'An issue has been reported by aarnold.',
-                    'vas@mcash.ug',
-                    ['k.agaba@student.ciu.ac.ug'],
-                    fail_silently=False,
-                )
+                        'New Issue Reported',
+                        f'An issue has been reported by aarnold.',
+                        'vas@mcash.ug',
+                        ['k.agaba@student.ciu.ac.ug'],
+                        fail_silently=False,
+                    )
             except User.DoesNotExist:
-                logger.info("No head of department found")
-                pass
+                    pass
             serializer.save()
-            logger.info(f"Issue created: {serializer.data}")
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-        logger.info(f"Serializer errors: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class DashboardStats(APIView):
@@ -150,9 +139,11 @@ class LoginView(APIView):
         email = request.data.get('email')
         password = request.data.get('password')
         user = authenticate(request, email=email, password=password)
+        print(user)
         if user is not None:
-            login(request, user)
+            # login(request, user)
             token, _ = Token.objects.get_or_create(user=user)
+            
             return Response({'token': token.key, 'role': user.role}, status=status.HTTP_200_OK)
         return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
     
