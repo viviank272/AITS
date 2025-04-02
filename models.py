@@ -17,6 +17,7 @@ class Department(models.Model):
     head_user_id = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True) 
     college_id = models.ForeignKey(College, on_delete=models.CASCADE) 
     created_at = models.DateTimeField(auto_now_add=True)
+    last_login = models.DateTimeField(null=True, blank=True) 
 
     def __str__(self):
         return self.department_name
