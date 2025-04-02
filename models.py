@@ -39,7 +39,8 @@ class User(models.Model):
     password_hash = models.CharField(max_length=255)  
     full_name = models.CharField(max_length=255)  
     role_id = models.IntegerField()
-    department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name="users)  
+    department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name="users)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.username} ({self.full_name})"
