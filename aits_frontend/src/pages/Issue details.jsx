@@ -8,7 +8,7 @@ const IssueDetail = () => {
   const [newComment, setNewComment] = useState("");
 
   useEffect(() => {
-    // Mock fetch issue details
+   // get issue details and comments from the API
     setIssue({ id: issueId, title: "Sample Issue", description: "Issue details go here." });
     setComments([
       { id: 1, content: "This is a comment.", user: "John" },
