@@ -32,4 +32,17 @@ class Role(models.Model):
     def __str__(self):
         return self.role_name
 
+class User(models.Model):
+    user_id = models.AutoField(primary_key=True)  
+    username = models.CharField(max_length=255, unique=True)  # Unique username
+    email = models.EmailField(max_length=255, unique=True)  # Unique email address
+    password_hash = models.CharField(max_length=255)  # Storing the password hash as a string
+    full_name = models.CharField(max_length=255)  # Full name of the user
+    role = models.CharField(max_length=50)  
+
+    def __str__(self):
+        return f"{self.username} ({self.full_name})"
+
+
+
 
