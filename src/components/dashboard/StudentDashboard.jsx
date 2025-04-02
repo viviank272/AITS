@@ -1,6 +1,6 @@
 import React from "react";
 import { Container, Row, Col, Card, ProgressBar } from "react-bootstrap";
-import Sidebar from "../../../StudentSidebar";
+import Sidebar from "./components/dashboard/StudentSidebar";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 const performanceData = [
