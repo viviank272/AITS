@@ -105,7 +105,10 @@ class UpdateIssueView(APIView):
             
             issue.status = 'resolved'
             issue.save()
-
+        # Status: Resolved → Closed (by Head of Department)
+        elif issue.status == 'resolved' and current_user.role == 'head_of_department':
+             issue.status = 'closed'
+             issue.save()
         else:
             return Response({'error': 'Invalid status transition or insufficient permissions'}, status=status.HTTP_403_FORBIDDEN)
 
