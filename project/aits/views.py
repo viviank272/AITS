@@ -117,24 +117,6 @@ class UpdateIssueView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class AssignIssueView(APIView):
-    def post(self, request, pk):
-        issue = Issue.objects.get(pk=pk)
-        if issue.status == 'open':
-            if issue.student != request.user and request.user.role == 'head_of_department':
-                issue.status = 'assigned'
-                issue.assigned_to = User.objects.get(role='lecturer', department=request.user.department)
-                issue.save()
-                send_mail(
-                    'Issue Assigned',
-                    f'An issue has been assigned to you.\nPlease log in to the AITS dashboard to view the details.',
-                    ''
-                    [issue.assigned_to.email],
-                    fail_silently=False,
-                )
-            return Response({'message': 'Issue assigned successfully'}, status=status.HTTP_200_OK)
-        return Response({'error': 'Issue is not open'}, status=status.HTTP_400_BAD_REQUEST)    
-    
 
 # Registration View
 class RegisterView(APIView):
