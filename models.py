@@ -38,7 +38,8 @@ class User(models.Model):
     email = models.EmailField(max_length=255, unique=True)  
     password_hash = models.CharField(max_length=255)  
     full_name = models.CharField(max_length=255)  
-    role_id = models.IntegerField()  
+    role_id = models.IntegerField()
+    department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name="users)  
 
     def __str__(self):
         return f"{self.username} ({self.full_name})"
