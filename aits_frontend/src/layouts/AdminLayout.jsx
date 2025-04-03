@@ -66,7 +66,7 @@ const AdminLayout = () => {
                 {user?.name?.split(' ').map(n => n[0]).join('')}
               </div>
               <div>
-                <h2 className="text-base font-semibold">{user?.name || 'Admin User'}</h2>
+                <h2 className="text-base font-semibold">{user?.name || 'Academic Registrar'}</h2>
                 <p className="text-sm text-gray-300">{user?.role || 'System Administrator'}</p>
               </div>
             </div>
