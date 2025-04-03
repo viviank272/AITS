@@ -1,4 +1,5 @@
 import React from "react";
+import "./privateroute.css"; 
 import { Navigate, Outlet } from "react-router-dom";
 
 const PrivateRoute = ({ isAuthenticated, isLoading }) => {
