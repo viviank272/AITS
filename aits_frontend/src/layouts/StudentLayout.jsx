@@ -6,9 +6,7 @@ import useLogout from '../hooks/useLogout';
 import {
   HomeIcon,
   TicketIcon,
-  ChatBubbleLeftRightIcon,
   BellIcon,
-  DocumentTextIcon,
   Cog6ToothIcon,
   ArrowLeftOnRectangleIcon
 } from '@heroicons/react/24/outline';
@@ -26,9 +24,7 @@ const StudentLayout = () => {
   const navigation = [
     { name: 'Dashboard', href: '/student', icon: HomeIcon },
     { name: 'My Issues', href: '/student/issues', icon: TicketIcon },
-    { name: 'Messages', href: '/student/messages', icon: ChatBubbleLeftRightIcon },
     { name: 'Notifications', href: '/student/notifications', icon: BellIcon },
-    { name: 'Documents', href: '/student/documents', icon: DocumentTextIcon },
     { name: 'Settings', href: '/student/settings', icon: Cog6ToothIcon }
   ];
 

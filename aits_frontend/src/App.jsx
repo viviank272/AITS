@@ -1,6 +1,8 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import './utils/fontawesome';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import MainLayout from './layouts/MainLayout';
 import LecturerLayout from './layouts/LecturerLayout';
 import StudentLayout from './layouts/StudentLayout';
@@ -67,6 +69,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 function App() {
   return (
     <AuthProvider>
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<Landing />} />

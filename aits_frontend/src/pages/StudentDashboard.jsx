@@ -324,21 +324,21 @@ const StudentDashboard = () => {
                     {issues.length > 0 ? (
                       issues.map((issue) => (
                         <tr key={issue.issue_id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             #{issue.issue_id}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {issue.title}
-                          </td>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {issue.title}
+                      </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                               {issue.category_name || 
                                 (issue.category && typeof issue.category === 'object' && issue.category.name ? 
                                   issue.category.name : 
                                   (typeof issue.category === 'number' ? `Category ID: ${issue.category}` : 'N/A'))}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
                             {(() => {
                               const statusName = issue.status_name || 
                                 (issue.status && typeof issue.status === 'object' && issue.status.name ? 
@@ -368,11 +368,11 @@ const StudentDashboard = () => {
                               return (
                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${bgColor} ${textColor}`}>
                                   {statusName}
-                                </span>
+                        </span>
                               );
                             })()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
                             {(() => {
                               const priorityName = issue.priority_name || 
                                 (issue.priority && typeof issue.priority === 'object' && issue.priority.name ? 
@@ -399,13 +399,13 @@ const StudentDashboard = () => {
                               return (
                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${bgColor} ${textColor}`}>
                                   {priorityName}
-                                </span>
+                        </span>
                               );
                             })()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {new Date(issue.created_at).toLocaleString()}
-                          </td>
+                      </td>
                           <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                             <Link 
                               to={`/student/issues/${issue.issue_id}`} 
@@ -413,16 +413,16 @@ const StudentDashboard = () => {
                             >
                               View
                             </Link>
-                          </td>
-                        </tr>
+                      </td>
+                    </tr>
                       ))
                     ) : (
-                      <tr>
+                    <tr>
                         <td colSpan="7" className="px-6 py-10 text-center text-gray-500">
-                          No issues found
-                        </td>
-                      </tr>
-                    )}
+                        No issues found
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
               </div>

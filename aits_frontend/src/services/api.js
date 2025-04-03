@@ -1,13 +1,17 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8000/api'; // Update this with your Django backend URL
+// const API_URL = 'http://localhost:8000/api'; // Update this with your Django backend URL
+const API_BASE_URL = "https://amnamara.pythonanywhere.com/api";
 
 // Create axios instance with default config
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+  // Temporarily disabled for CORS testing
+  withCredentials: false,
+  timeout: 30000, // 30 second timeout
 });
 
 // Add token to requests if it exists
@@ -54,8 +58,24 @@ api.interceptors.response.use(
 
 // Auth services
 export const login = async (credentials) => {
-  const response = await api.post('/users/login/', credentials);
-  return response.data;
+  console.log('Attempting login with:', credentials.email);
+  try {
+    console.log('Login API URL:', `${API_BASE_URL}/users/login/`);
+    const response = await api.post('/users/login/', credentials);
+    console.log('Login successful. Response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Login failed:', error.message);
+    console.error('Full error object:', error);
+    if (error.response) {
+      console.error('Error response data:', error.response.data);
+      console.error('Error response status:', error.response.status);
+      console.error('Error response headers:', error.response.headers);
+    } else if (error.request) {
+      console.error('No response received:', error.request);
+    }
+    throw error;
+  }
 };
 
 export const logout = async () => {
@@ -82,6 +102,29 @@ export const updateProfile = async (profileData) => {
 // User services
 export const getStudents = async () => {
   const response = await api.get('/users/students/');
+  return response.data;
+};
+
+export const createStudent = async (studentData) => {
+  console.log('createStudent API call with data:', studentData);
+  try {
+    const response = await api.post('/users/students/', studentData);
+    console.log('createStudent API response:', response);
+    return response.data;
+  } catch (error) {
+    console.error('createStudent API error:', error);
+    console.error('Error response:', error.response?.data);
+    throw error;
+  }
+};
+
+export const updateStudent = async (studentId, studentData) => {
+  const response = await api.put(`/users/students/${studentId}/`, studentData);
+  return response.data;
+};
+
+export const deleteStudent = async (studentId) => {
+  const response = await api.delete(`/users/students/${studentId}/`);
   return response.data;
 };
 
@@ -151,6 +194,11 @@ export const getColleges = async () => {
 
 export const getDepartments = async () => {
   const response = await api.get('/academic/departments/');
+  return response.data;
+};
+
+export const getPrograms = async () => {
+  const response = await api.get('/academic/programs/');
   return response.data;
 };
 
