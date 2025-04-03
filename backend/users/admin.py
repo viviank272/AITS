@@ -32,9 +32,9 @@ class RoleAdmin(admin.ModelAdmin):
 
 
 class StudentAdmin(admin.ModelAdmin):
-    list_display = ('student_number', 'get_full_name', 'program', 'year_level', 'enrollment_status')
-    list_filter = ('program', 'year_level', 'enrollment_status')
-    search_fields = ('student_number', 'user__full_name', 'user__email')
+    list_display = ('student_number', 'registration_number', 'get_full_name', 'program', 'department', 'year_level', 'semester_in_year', 'current_semester', 'enrollment_status')
+    list_filter = ('program', 'department', 'year_level', 'semester_in_year', 'current_semester', 'enrollment_status')
+    search_fields = ('student_number', 'registration_number', 'user__full_name', 'user__email')
     
     def get_full_name(self, obj):
         return obj.user.full_name

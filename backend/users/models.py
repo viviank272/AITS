@@ -78,10 +78,16 @@ class User(AbstractBaseUser, PermissionsMixin):
 class Student(models.Model):
     student_id = models.AutoField(primary_key=True)
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='student_profile')
-    student_number = models.CharField(max_length=20, unique=True)
+    student_number = models.IntegerField(unique=True, help_text="Unique student identifier number")
+    registration_number = models.CharField(max_length=20, unique=True, help_text="Registration/enrollment number")
     college = models.ForeignKey('academic.College', on_delete=models.CASCADE, related_name='students')
+    department = models.ForeignKey('academic.Department', on_delete=models.CASCADE, 
+                                  related_name='department_students')
     program = models.ForeignKey('academic.Program', on_delete=models.CASCADE, related_name='students')
     year_level = models.IntegerField()
+    semester_in_year = models.IntegerField(choices=[(1, 'Semester 1'), (2, 'Semester 2')], default=1, 
+                                       help_text="Current semester within the academic year (1 or 2)")
+    current_semester = models.IntegerField(default=1, help_text="Cumulative semester number throughout the program (1-8 for 4 years, 1-10 for 5 years)")
     enrollment_status = models.CharField(max_length=20, choices=[
         ('enrolled', 'Enrolled'),
         ('on_leave', 'On Leave'),
@@ -94,3 +100,22 @@ class Student(models.Model):
     
     def __str__(self):
         return f"{self.user.full_name} ({self.student_number})"
+    
+    def calculate_current_semester(self):
+        """Calculate the current cumulative semester based on year and semester within the year"""
+        if self.year_level and self.semester_in_year:
+            return ((self.year_level - 1) * 2) + self.semester_in_year
+        return 1
+        
+    def save(self, *args, **kwargs):
+        # Ensure department is consistent with the program's department
+        if self.program and (not self.department or 
+                         (hasattr(self.program, 'department') and 
+                          self.program.department.department_id != self.department.department_id)):
+            self.department = self.program.department
+        
+        # Calculate current_semester before saving
+        if not self.current_semester or (self.year_level and self.semester_in_year):
+            self.current_semester = self.calculate_current_semester()
+            
+        super().save(*args, **kwargs)

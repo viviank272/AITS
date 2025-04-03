@@ -179,6 +179,35 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:5173",  # Vite default port
+    "https://mak-issue-tracker.vercel.app"
+]
+
+# For development, you can enable this to allow all origins
+# CORS_ALLOW_ALL_ORIGINS = True
+
+# You may also need to allow credentials
+CORS_ALLOW_CREDENTIALS = True
+
+# Additional CORS settings
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
 ]
 
 # Custom user model
