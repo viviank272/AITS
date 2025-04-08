@@ -47,7 +47,7 @@ const Landing = () => {
                 <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <ShieldCheckIcon className="w-8 h-8 text-blue-600" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">Administrator</h3>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Academic Registrar</h3>
                 <p className="text-gray-600">Access system administration and management features</p>
               </div>
             </div>
