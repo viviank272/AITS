@@ -10,6 +10,7 @@ export const AuthContext = createContext(null);
  */
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -19,7 +20,17 @@ export const AuthProvider = ({ children }) => {
     const token = localStorage.getItem('access');
 
     if (storedUser && token) {
-      setUser(JSON.parse(storedUser));
+      try {
+        const userData = JSON.parse(storedUser);
+        setUser(userData);
+        setIsAuthenticated(true);
+        console.log('User authenticated from localStorage:', userData);
+      } catch (error) {
+        console.error('Error parsing stored user data:', error);
+        setIsAuthenticated(false);
+      }
+    } else {
+      setIsAuthenticated(false);
     }
 
     setLoading(false);
@@ -51,10 +62,12 @@ export const AuthProvider = ({ children }) => {
 
       // Update context state
       setUser(userData);
+      setIsAuthenticated(true);
 
       return userData;
     } catch (error) {
       console.error('Login error:', error);
+      setIsAuthenticated(false);
       throw error;
     }
   };
@@ -83,6 +96,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('selectedRole');
       
       setUser(null);
+      setIsAuthenticated(false);
       
       // Navigate to landing page
       navigate('/');
@@ -94,12 +108,14 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('user');
       localStorage.removeItem('selectedRole');
       setUser(null);
+      setIsAuthenticated(false);
       navigate('/');
     }
   };
 
   const value = {
     user,
+    isAuthenticated,
     loading,
     login,
     register,

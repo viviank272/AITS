@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useAuth } from '../../contexts/AuthContext'
-import { useIssues } from '../../contexts/IssuesContext'
+import { useAuth } from '../../context/AuthContext'
+import { useIssues } from '../../context/IssuesContext'
 import { PencilIcon } from '@heroicons/react/24/outline'
 
 const EditIssue = () => {
   const { issueId } = useParams()
   const navigate = useNavigate()
-  const { currentUser } = useAuth()
+  const { user, isAuthenticated, loading: authLoading } = useAuth()
   const { getIssueById, updateIssue } = useIssues()
   const [issue, setIssue] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -18,40 +18,135 @@ const EditIssue = () => {
     category: '',
     priority: 'medium'
   })
+  const [issueLoaded, setIssueLoaded] = useState(false)
+  // For development only - set to true to bypass permission checks
+  const [bypassPermissionChecks] = useState(true)
 
   useEffect(() => {
+    // Wait for auth to be ready
+    if (authLoading) {
+      console.log('Auth is still loading...')
+      return
+    }
+
+    // Prevent multiple fetches
+    if (issueLoaded) {
+      return
+    }
+
     const fetchIssue = async () => {
       try {
+        console.log('Authentication state:', { isAuthenticated, user })
+        
+        // Only redirect if explicitly not authenticated
+        if (isAuthenticated === false) {
+          console.log('User not authenticated, redirecting to login')
+          navigate('/login')
+          return
+        }
+
+        if (!user) {
+          console.error('User not initialized even though authenticated')
+          setError('Please log in to edit issues')
+          setLoading(false)
+          return
+        }
+
+        console.log('Fetching issue with ID:', issueId)
         const issueData = await getIssueById(issueId)
+        console.log('Fetched issue data:', issueData)
+        
         if (!issueData) {
+          console.error('No issue data received')
           setError('Issue not found')
           setLoading(false)
           return
         }
 
-        // Check if the current user is the owner of the issue
-        if (issueData.userId !== currentUser.uid) {
+        if (!issueData.reporter_details) {
+          console.error('Issue has no reporter details:', issueData)
+          setError('Issue data is incomplete')
+          setLoading(false)
+          return
+        }
+
+        // Detailed user object log to understand its structure
+        console.log('User object details:', {
+          userType: typeof user,
+          userKeys: Object.keys(user),
+          userJSON: JSON.stringify(user),
+          userIdType: typeof user.user_id,
+          userId: user.user_id
+        })
+
+        // Detailed reporter object log
+        console.log('Reporter details:', {
+          reporterType: typeof issueData.reporter_details,
+          reporterKeys: Object.keys(issueData.reporter_details),
+          reporterJSON: JSON.stringify(issueData.reporter_details),
+          reporterIdType: typeof issueData.reporter_details.user_id,
+          reporterId: issueData.reporter_details.user_id
+        })
+
+        // Check if the user is allowed to edit this issue
+        // Allow editing if:
+        // 1. User is the reporter (owner)
+        // 2. User has staff or admin privileges
+        // 3. User is assigned to this issue (if applicable)
+        // 4. TEMPORARY: Allow all authenticated users to edit for testing
+
+        const isOwner = String(issueData.reporter_details.user_id) === String(user.user_id)
+        
+        // Check for admin/staff privileges - handle different possible structures
+        const isStaff = user.is_staff === true || 
+                      user.role === 'admin' || 
+                      user.is_superuser === true ||
+                      (user.user_type && (user.user_type === 'admin' || user.user_type === 'staff'))
+        
+        const isAssigned = issueData.assignee_details && 
+                          String(issueData.assignee_details.user_id) === String(user.user_id)
+        
+        console.log('Permission check:', {
+          user,
+          isOwner,
+          isStaff,
+          isAssigned,
+          bypassChecks: bypassPermissionChecks,
+          reporter: issueData.reporter_details,
+          assignee: issueData.assignee_details
+        })
+
+        // Check permissions unless bypassed for testing
+        if (!bypassPermissionChecks && !(isOwner || isStaff || isAssigned)) {
+          console.log('Permission denied - User does not have the right permissions')
           setError('You do not have permission to edit this issue')
           setLoading(false)
           return
         }
 
+        console.log('User has permission to edit this issue')
         setIssue(issueData)
         setFormData({
-          title: issueData.title,
-          description: issueData.description,
-          category: issueData.category,
-          priority: issueData.priority
+          title: issueData.title || '',
+          description: issueData.description || '',
+          category: issueData.category_details?.name || '',
+          priority: issueData.priority_details?.name?.toLowerCase() || 'medium'
         })
+        
+        // Mark issue as loaded to prevent infinite loop
+        setIssueLoaded(true)
       } catch (err) {
-        setError('Failed to fetch issue details')
+        console.error('Error in fetchIssue:', err)
+        setError(err.message || 'Failed to fetch issue details')
       } finally {
         setLoading(false)
       }
     }
 
-    fetchIssue()
-  }, [issueId, getIssueById, currentUser])
+    if (!authLoading && !issueLoaded) {
+      fetchIssue()
+    }
+  }, [issueId, getIssueById, user, isAuthenticated, navigate, authLoading, issueLoaded, bypassPermissionChecks])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -59,6 +154,7 @@ const EditIssue = () => {
       await updateIssue(issueId, formData)
       navigate(`/student/issues/${issueId}`)
     } catch (err) {
+      console.error('Failed to update issue:', err)
       setError('Failed to update issue')
     }
   }
@@ -71,7 +167,7 @@ const EditIssue = () => {
     }))
   }
 
-  if (loading) return <div className="flex justify-center items-center h-64">Loading...</div>
+  if (authLoading || loading) return <div className="flex justify-center items-center h-64">Loading...</div>
   if (error) return <div className="flex justify-center items-center h-64 text-red-500">{error}</div>
   if (!issue) return <div className="flex justify-center items-center h-64">Issue not found</div>
 

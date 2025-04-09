@@ -236,9 +236,15 @@ function IssueList({ type }) {
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <Link 
                           to={`${isStudent ? '/student' : isLecturer ? '/lecturer' : ''}/issues/${issue.id}`} 
-                          className="text-blue-600 hover:text-blue-900"
+                          className="text-blue-600 hover:text-blue-900 mr-4"
                         >
                           View
+                        </Link>
+                        <Link 
+                          to={`${isStudent ? '/student' : isLecturer ? '/lecturer' : ''}/issues/${issue.id}/edit`} 
+                          className="text-green-600 hover:text-green-900"
+                        >
+                          Edit
                         </Link>
                       </td>
                     </tr>

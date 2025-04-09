@@ -144,9 +144,23 @@ export const getLecturerIssues = async () => {
   return response.data;
 };
 
-export const getIssueById = async (id) => {
-  const response = await api.get(`/issues/${id}/`);
-  return response.data;
+export const getIssueById = async (pk) => {
+  try {
+    console.log('Making API call to fetch issue:', pk);
+    const response = await api.get(`/issues/${pk}/`);
+    console.log('Raw API response:', response);
+    if (!response.data) {
+      throw new Error('No data received from server');
+    }
+    return response.data;
+  } catch (error) {
+    console.error('API Error in getIssueById:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    });
+    throw error;
+  }
 };
 
 export const createIssue = async (issueData) => {
