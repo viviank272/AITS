@@ -1,11 +1,20 @@
+<<<<<<< HEAD
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+=======
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+>>>>>>> e5e6ab6b971e452f17bc45c45c66a703cb7f1ac6
 import { useAuth } from '../context/AuthContext';
 import logoWhite from '../assets/logo-white.png';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 const Login = () => {
   const navigate = useNavigate();
+<<<<<<< HEAD
+=======
+  const location = useLocation();
+>>>>>>> e5e6ab6b971e452f17bc45c45c66a703cb7f1ac6
   const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
@@ -13,7 +22,47 @@ const Login = () => {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+<<<<<<< HEAD
 //end of line 10
+=======
+  const [selectedRole, setSelectedRole] = useState(null);
+
+  useEffect(() => {
+    // Get role from localStorage
+    const storedRole = localStorage.getItem('selectedRole');
+    // Also check URL parameters (for compatibility with both approaches)
+    const params = new URLSearchParams(location.search);
+    const urlRole = params.get('role');
+    
+    if (urlRole) {
+      setSelectedRole(urlRole);
+    } else if (storedRole) {
+      setSelectedRole(storedRole);
+    }
+  }, [location.search]);
+
+  // Define test credentials based on role
+  const getCredentials = (role) => {
+    switch(role) {
+      case 'admin':
+        return {
+          username: 'amonkats8@gmail.com',
+          password: 'AK_94*jmv'
+        };
+      case 'student':
+        return {
+          username: 'student@muk.ac.ug',
+          password: 'student123'
+        };
+      default:
+        return null;
+    }
+  };
+
+  // Get credentials for current role
+  const credentials = selectedRole ? getCredentials(selectedRole) : null;
+
+>>>>>>> e5e6ab6b971e452f17bc45c45c66a703cb7f1ac6
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -59,6 +108,19 @@ const Login = () => {
     }
   };
 
+<<<<<<< HEAD
+=======
+  // Function to autofill credentials
+  const fillCredentials = () => {
+    if (credentials) {
+      setFormData({
+        email: credentials.username,
+        password: credentials.password
+      });
+    }
+  };
+
+>>>>>>> e5e6ab6b971e452f17bc45c45c66a703cb7f1ac6
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#1E9833]">
       <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6">
@@ -78,8 +140,37 @@ const Login = () => {
           <p className="text-sm text-gray-600">
             Please sign in to your account
           </p>
+<<<<<<< HEAD
         </div>
 
+=======
+          
+          {/* Display role-specific info */}
+          {selectedRole && (
+            <div className="mt-3">
+              <p className="text-sm font-medium text-gray-700">Selected role: <span className="font-bold text-[#1E9833] capitalize">{selectedRole}</span></p>
+            </div>
+          )}
+        </div>
+
+        {/* Test credentials box */}
+        {credentials && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-md">
+            <div className="flex justify-between items-center mb-2">
+              <p className="text-sm font-medium text-blue-700">Test Credentials</p>
+              <button 
+                onClick={fillCredentials}
+                className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded"
+              >
+                Auto-fill
+              </button>
+            </div>
+            <p className="text-xs text-gray-600">Username: <span className="font-mono text-gray-800">{credentials.username}</span></p>
+            <p className="text-xs text-gray-600">Password: <span className="font-mono text-gray-800">{credentials.password}</span></p>
+          </div>
+        )}
+
+>>>>>>> e5e6ab6b971e452f17bc45c45c66a703cb7f1ac6
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded mb-4">
             {error}
