@@ -26,6 +26,8 @@ import AdminReports from './pages/admin/Reports';
 import SystemSettings from './pages/admin/SystemSettings';
 import RoleManagement from './pages/admin/RoleManagement';
 import AuditLogs from './pages/admin/AuditLogs';
+import IssueGraphs from './components/admin/Issue Trend graphs';
+
 
 // Student Pages
 import StudentIssues from './pages/student/Issues';
@@ -96,6 +98,7 @@ function App() {
           <Route path="settings" element={<SystemSettings />} />
           <Route path="roles" element={<RoleManagement />} />
           <Route path="audit-logs" element={<AuditLogs />} />
+          <Route path="issue-trends" element={<IssueGraphs />} />
         </Route>
 
         {/* Lecturer Routes */}

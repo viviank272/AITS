@@ -1,7 +1,6 @@
 import React from  "react";
 import {Line} from 'react-chartsjs-2';
 import {Chart as ChartJS,LineElement,CategoryScale,LinearScale,PointElement,Title,Tooltip,Legend} from 'chart.js';
-import React from "react";
 import { Line } from "react-chartsjs-2";
 import { Chart as ChartJS, LineElement, CategoryScale, LinearScale, PointElement, Title, Tooltip, Legend } from "chart.js";
 
@@ -46,8 +45,8 @@ const IssueByCategory = () => {
             {
                 label: "Issues by Category",
                 data: [25, 15, 10],
-                borderColor: "rgba(255, 206, 86, 1)",
-                backgroundColor: "rgba(255, 206, 86, 0.2)",
+                borderColor: "rgb(86, 255, 151)",
+                backgroundColor: "rgba(97, 86, 255, 0.2)",
                 tension: 0.4,
             },
         ],
