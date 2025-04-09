@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getStudentIssues } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { PlusIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, EyeIcon, PencilIcon } from '@heroicons/react/24/outline';
 
 const StudentDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -407,13 +407,23 @@ const StudentDashboard = () => {
                             {new Date(issue.created_at).toLocaleString()}
                       </td>
                           <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                            <Link 
-                              to={`/student/issues/${issue.issue_id}`} 
-                              className="inline-flex items-center justify-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                            >
-                              View
-                            </Link>
-                      </td>
+                            <div className="flex items-center justify-center space-x-2">
+                              <Link 
+                                to={`/student/issues/${issue.issue_id}/edit`} 
+                                className="inline-flex items-center p-1.5 border border-transparent rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                title="Edit Issue"
+                              >
+                                <PencilIcon className="h-4 w-4" />
+                              </Link>
+                              <Link 
+                                to={`/student/issues/${issue.issue_id}`} 
+                                className="inline-flex items-center p-1.5 border border-transparent rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                                title="View Issue"
+                              >
+                                <EyeIcon className="h-4 w-4" />
+                              </Link>
+                            </div>
+                          </td>
                     </tr>
                       ))
                     ) : (

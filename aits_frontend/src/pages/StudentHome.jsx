@@ -7,6 +7,7 @@ import Issues from './student/Issues'
 import IssueDetails from './issues/IssueDetails'
 import Notifications from './student/Notifications'
 import Settings from './student/Settings'
+import EditIssue from './issues/EditIssue'
 
 const StudentHome = () => {
   return (
@@ -18,6 +19,7 @@ const StudentHome = () => {
           <Route path="create" element={<CreateIssue />} />
           <Route path=":issueId">
             <Route index element={<IssueDetails />} />
+            <Route path="edit" element={<EditIssue />} />
             <Route path="comments" element={<div>Issue Comments</div>} />
             <Route path="track" element={<div>Issue Tracking</div>} />
           </Route>
