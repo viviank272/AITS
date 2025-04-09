@@ -1,12 +1,20 @@
+<<<<<<< HEAD
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+=======
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+>>>>>>> e5e6ab6b971e452f17bc45c45c66a703cb7f1ac6
 import { useAuth } from '../context/AuthContext';
 import logoWhite from '../assets/logo-white.png';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 const Login = () => {
   const navigate = useNavigate();
+<<<<<<< HEAD
+=======
   const location = useLocation();
+>>>>>>> e5e6ab6b971e452f17bc45c45c66a703cb7f1ac6
   const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
@@ -14,6 +22,9 @@ const Login = () => {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+<<<<<<< HEAD
+//end of line 10
+=======
   const [selectedRole, setSelectedRole] = useState(null);
 
   useEffect(() => {
@@ -51,6 +62,7 @@ const Login = () => {
   // Get credentials for current role
   const credentials = selectedRole ? getCredentials(selectedRole) : null;
 
+>>>>>>> e5e6ab6b971e452f17bc45c45c66a703cb7f1ac6
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -96,6 +108,8 @@ const Login = () => {
     }
   };
 
+<<<<<<< HEAD
+=======
   // Function to autofill credentials
   const fillCredentials = () => {
     if (credentials) {
@@ -106,6 +120,7 @@ const Login = () => {
     }
   };
 
+>>>>>>> e5e6ab6b971e452f17bc45c45c66a703cb7f1ac6
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#1E9833]">
       <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6">
@@ -125,6 +140,10 @@ const Login = () => {
           <p className="text-sm text-gray-600">
             Please sign in to your account
           </p>
+<<<<<<< HEAD
+        </div>
+
+=======
           
           {/* Display role-specific info */}
           {selectedRole && (
@@ -151,6 +170,7 @@ const Login = () => {
           </div>
         )}
 
+>>>>>>> e5e6ab6b971e452f17bc45c45c66a703cb7f1ac6
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded mb-4">
             {error}
