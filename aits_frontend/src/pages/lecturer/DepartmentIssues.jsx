@@ -17,7 +17,7 @@ const DepartmentIssues = () => {
     {
       id: 'ISS-2024-001',
       title: 'Department Meeting Schedule',
-      student: 'John Doe',
+      student: 'John Malinga',
       priority: 'high',
       status: 'pending',
       timeLeft: '2 days',

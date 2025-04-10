@@ -36,12 +36,12 @@ const LecturerSidebar = () => {
             {user?.name?.split(' ').map(n => n[0]).join('')}
           </div>
           <div>
-            <h2 className="font-semibold">{user?.name || 'Dr. Patricia Lee'}</h2>
+            <h2 className="font-semibold">{user?.name || 'Dr. Peter Wakholi'}</h2>
             <p className="text-sm text-gray-300">{user?.department || 'Computer Science'}</p>
           </div>
         </div>
         <div className="mt-4 text-sm text-gray-300">
-          Faculty ID: {user?.facultyId || 'F9876543'}
+          College ID: {user?.facultyId || 'F9876543'}
         </div>
       </div>
 

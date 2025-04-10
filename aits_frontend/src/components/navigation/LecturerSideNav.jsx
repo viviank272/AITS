@@ -32,11 +32,11 @@ function LecturerSideNav() {
             DP
           </div>
           <div>
-            <h3 className="font-medium">Dr. Patricia Lee</h3>
+            <h3 className="font-medium">Dr. Peter Wakholi</h3>
             <p className="text-sm text-gray-300">Computer Science</p>
           </div>
         </div>
-        <p className="text-sm text-gray-300 mt-2">Faculty ID: F9876543</p>
+        <p className="text-sm text-gray-300 mt-2">College ID: F9876543</p>
       </div>
       
       <nav className="flex-1 px-2 py-4">

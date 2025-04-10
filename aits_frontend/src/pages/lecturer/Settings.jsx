@@ -5,11 +5,11 @@ function Settings() {
   const [activeTab, setActiveTab] = useState('profile');
   const [settings, setSettings] = useState({
     profile: {
-      name: 'Dr. John Smith',
-      email: 'john.smith@university.edu',
+      name: 'Dr. Peter Wakholi',
+      email: 'peter.wakholi@muk.ac.ug',
       department: 'Computer Science',
-      office: 'Room 301, Building A',
-      phone: '+1 234 567 8900'
+      office: 'Room 301, Block B',
+      phone: '+256 774 567 890'
     },
     notifications: {
       emailNotifications: true,
