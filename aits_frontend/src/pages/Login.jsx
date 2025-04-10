@@ -43,6 +43,11 @@ const Login = () => {
           username: 'student@muk.ac.ug',
           password: 'student123'
         };
+      case 'lecturer':
+        return {
+          username: 'lecturer@muk.ac.ug',
+          password: 'lecturer123'
+        };
       default:
         return null;
     }
@@ -207,7 +212,7 @@ const Login = () => {
           <p className="text-xs text-gray-600">
             Don't have an account?{' '}
             <button
-              onClick={() => navigate('/register')}
+              onClick={() => navigate('/#')}
               className="text-[#1E9833] hover:text-[#167a2a] font-medium"
             >
               Register here
