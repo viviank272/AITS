@@ -2,6 +2,7 @@ import React, { useContext } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Link, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import { IssuesProvider } from '../context/IssuesContext';
 import useLogout from '../hooks/useLogout';
 import {
   HomeIcon,
@@ -93,7 +94,9 @@ const StudentLayout = () => {
       {/* Main content */}
       <div className="flex flex-1 flex-col pl-64">
         <main className="flex-1 overflow-y-auto bg-gray-100">
-          <Outlet />
+          <IssuesProvider>
+            <Outlet />
+          </IssuesProvider>
         </main>
       </div>
     </div>
