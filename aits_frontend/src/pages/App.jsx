@@ -36,6 +36,7 @@ import StudentSettings from './pages/student/Settings';
 import IssueList from './pages/issues/IssueList';
 import IssueDetails from './pages/issues/IssueDetails';
 import CreateIssue from './pages/issues/CreateIssue';
+import EditIssue from './pages/issues/EditIssue';
 import Profile from './pages/Profile';
 import CommunicationGuide from './pages/docs/CommunicationGuide';
 
@@ -128,6 +129,7 @@ function App() {
           <Route path="issues" element={<StudentIssues />} />
           <Route path="issues/create" element={<CreateIssue />} />
           <Route path="issues/:issueId" element={<IssueDetails />} />
+          <Route path="issues/:issueId/edit" element={<EditIssue />} />
           <Route path="messages" element={<StudentMessages />} />
           <Route path="notifications" element={<StudentNotifications />} />
           <Route path="documents" element={<StudentDocuments />} />

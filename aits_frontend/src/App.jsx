@@ -35,6 +35,7 @@ import StudentMessages from './pages/student/Messages';
 import StudentNotifications from './pages/student/Notifications';
 import StudentDocuments from './pages/student/Documents';
 import StudentSettings from './pages/student/Settings';
+import EditIssue from './pages/issues/EditIssue';
 
 // Common Pages
 import IssueList from './pages/issues/IssueList';
@@ -134,6 +135,7 @@ function App() {
           <Route path="issues" element={<StudentIssues />} />
           <Route path="issues/create" element={<CreateIssue />} />
           <Route path="issues/:issueId" element={<IssueDetails />} />
+          <Route path="issues/:issueId/edit" element={<EditIssue />} />
           <Route path="messages" element={<StudentMessages />} />
           <Route path="notifications" element={<StudentNotifications />} />
           <Route path="documents" element={<StudentDocuments />} />

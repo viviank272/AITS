@@ -1,29 +1,3 @@
-<<<<<<< HEAD
-import { useState } from "react";
-import "./Register.css";
-
-const Register = () => {
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
-  const handleRegister = (e) => {
-    e.preventDefault();
-    alert(`User Registered: ${username}, ${email}`);
-  };
-
-  return (
-    <form onSubmit={handleRegister}>
-      <input type="text" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} required />
-      <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-      <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-      <button type="submit">Register</button>
-    </form>
-  );
-};
-
-export default Register;
-=======
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { register } from '../services/api';
@@ -87,245 +61,238 @@ function Register() {
     }
   };
 
-  const programOptions = [
-    "Computer Science",
-    "Software Engineering",
-    "Information Technology",
-    "Computer Engineering",
-    "Electrical Engineering",
-    "Mechanical Engineering",
-    "Civil Engineering",
-    "Business Administration",
-    "Economics",
-    "Medicine",
-    "Nursing",
-    "Pharmacy"
-  ];
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#1E9833]">
-      <div className="max-w-4xl w-full mx-4">
-        {/* Card Container */}
-        <div className="bg-white rounded-2xl shadow-2xl p-6">
-          {/* Logo and Header at the top */}
-          <div className="text-center mb-6">
-            <div className="flex items-center justify-center">
-              <img 
-                src={logoWhite} 
-                alt="University Logo" 
-                className="h-32 w-auto object-contain"
+      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6">
+        <div className="text-center mb-6">
+          <img
+            src={logoWhite}
+            alt="Makerere University Logo"
+            className="h-32 w-auto object-contain mx-auto mb-6"
+          />
+          <h2 className="text-xl font-semibold text-gray-800 mb-3">Create Account</h2>
+          <p className="text-sm text-gray-600">
+            Please fill in your details to create an account
+          </p>
+        </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded mb-4">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label
+                htmlFor="firstName"
+                className="block text-sm font-medium text-gray-700"
+              >
+                First Name
+              </label>
+              <input
+                type="text"
+                id="firstName"
+                name="firstName"
+                value={formData.firstName}
+                onChange={handleChange}
+                required
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#1E9833] focus:border-[#1E9833]"
               />
             </div>
-            <div className="mt-4">
-              <h2 className="text-xl font-bold text-gray-900 mb-2">Academic Issue Tracker</h2>
-              <p className="text-sm text-gray-500">Create your account</p>
+            <div>
+              <label
+                htmlFor="lastName"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Last Name
+              </label>
+              <input
+                type="text"
+                id="lastName"
+                name="lastName"
+                value={formData.lastName}
+                onChange={handleChange}
+                required
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#1E9833] focus:border-[#1E9833]"
+              />
             </div>
           </div>
 
-          {/* Error Message */}
-          {error && (
-            <div className="bg-red-50 text-red-500 p-3 rounded-lg text-sm mb-4">
-              {error}
-            </div>
-          )}
-
-          {/* Form in two columns */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Left Column */}
-            <div className="space-y-3">
-              {/* Name Fields */}
-              <div>
-                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
-                  First Name
-                </label>
-                <input
-                  id="firstName"
-                  name="firstName"
-                  type="text"
-                  required
-                  value={formData.firstName}
-                  onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
-                  Last Name
-                </label>
-                <input
-                  id="lastName"
-                  name="lastName"
-                  type="text"
-                  required
-                  value={formData.lastName}
-                  onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="studentId" className="block text-sm font-medium text-gray-700">
-                  Student Number
-                </label>
-                <input
-                  id="studentId"
-                  name="studentId"
-                  type="text"
-                  required
-                  value={formData.studentId}
-                  onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  placeholder="e.g., 2400756789"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="registrationNumber" className="block text-sm font-medium text-gray-700">
-                  Registration Number
-                </label>
-                <input
-                  id="registrationNumber"
-                  name="registrationNumber"
-                  type="text"
-                  required
-                  value={formData.registrationNumber}
-                  onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  placeholder="e.g., 24/U/25945/EVE"
-                />
-              </div>
-            </div>
-
-            {/* Right Column */}
-            <div className="space-y-3">
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                  Email Address
-                </label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  placeholder="your.name@muk.ac.ug"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="program" className="block text-sm font-medium text-gray-700">
-                  Program
-                </label>
-                <select
-                  id="program"
-                  name="program"
-                  required
-                  value={formData.program}
-                  onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                >
-                  <option value="" disabled>Select your program</option>
-                  {programOptions.map((program) => (
-                    <option key={program} value={program}>
-                      {program}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                  Password
-                </label>
-                <div className="relative mt-1">
-                  <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    value={formData.password}
-                    onChange={handleChange}
-                    className="block w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPassword ? (
-                      <EyeSlashIcon className="h-5 w-5" />
-                    ) : (
-                      <EyeIcon className="h-5 w-5" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                  Confirm Password
-                </label>
-                <div className="relative mt-1">
-                  <input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    required
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    className="block w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showConfirmPassword ? (
-                      <EyeSlashIcon className="h-5 w-5" />
-                    ) : (
-                      <EyeIcon className="h-5 w-5" />
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Submit Button - Full Width */}
-          <div className="mt-6">
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          <div>
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-gray-700"
             >
-              {loading ? (
-                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              ) : (
-                'Create Account'
-              )}
+              Email
+            </label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#1E9833] focus:border-[#1E9833]"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="studentId"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Student ID
+            </label>
+            <input
+              type="text"
+              id="studentId"
+              name="studentId"
+              value={formData.studentId}
+              onChange={handleChange}
+              required
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#1E9833] focus:border-[#1E9833]"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="registrationNumber"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Registration Number
+            </label>
+            <input
+              type="text"
+              id="registrationNumber"
+              name="registrationNumber"
+              value={formData.registrationNumber}
+              onChange={handleChange}
+              required
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#1E9833] focus:border-[#1E9833]"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="program"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Program
+            </label>
+            <input
+              type="text"
+              id="program"
+              name="program"
+              value={formData.program}
+              onChange={handleChange}
+              required
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#1E9833] focus:border-[#1E9833]"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Password
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                id="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#1E9833] focus:border-[#1E9833]"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center"
+              >
+                {showPassword ? (
+                  <EyeSlashIcon className="h-5 w-5 text-gray-400" />
+                ) : (
+                  <EyeIcon className="h-5 w-5 text-gray-400" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label
+              htmlFor="confirmPassword"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Confirm Password
+            </label>
+            <div className="relative">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                id="confirmPassword"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                required
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#1E9833] focus:border-[#1E9833]"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center"
+              >
+                {showConfirmPassword ? (
+                  <EyeSlashIcon className="h-5 w-5 text-gray-400" />
+                ) : (
+                  <EyeIcon className="h-5 w-5 text-gray-400" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label
+              htmlFor="role"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Role
+            </label>
+            <select
+              id="role"
+              name="role"
+              value={formData.role}
+              onChange={handleChange}
+              required
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#1E9833] focus:border-[#1E9833]"
+            >
+              <option value="student">Student</option>
+              <option value="lecturer">Lecturer</option>
+            </select>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#1E9833] hover:bg-[#167a2a] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1E9833] disabled:opacity-50"
+          >
+            {loading ? 'Creating account...' : 'Create account'}
+          </button>
+        </form>
+
+        <div className="mt-4 text-center">
+          <p className="text-xs text-gray-600">
+            Already have an account?{' '}
+            <button
+              onClick={() => navigate('/login')}
+              className="text-[#1E9833] hover:text-[#167a2a] font-medium"
+            >
+              Sign in here
             </button>
-          </div>
-
-          {/* Login Link */}
-          <div className="text-center mt-4">
-            <p className="text-sm text-gray-600">
-              Already have an account?{' '}
-              <Link to="/login" className="font-medium text-blue-600 hover:text-blue-800">
-                Sign in here
-              </Link>
-            </p>
-          </div>
-
-          {/* Footer */}
-          <div className="text-center text-xs text-gray-500 mt-4">
-            <p>© {new Date().getFullYear()} Makerere University. All rights reserved.</p>
-          </div>
+          </p>
         </div>
       </div>
     </div>
@@ -333,4 +300,4 @@ function Register() {
 }
 
 export default Register; 
->>>>>>> e5e6ab6b971e452f17bc45c45c66a703cb7f1ac6
+
