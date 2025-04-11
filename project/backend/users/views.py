@@ -24,7 +24,7 @@ def register_user(request):
     """
     # This is a placeholder for now
     return Response({"message": "User registration endpoint"}, status=status.HTTP_200_OK)
-    
+# Register View    
 class RegisterView(APIView):
     def post(self, request):
         serializer = UserRegistrationSerializer(data=request.data)
