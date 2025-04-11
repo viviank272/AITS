@@ -27,7 +27,7 @@ const HighPriorityIssues = ({ issues, onViewIssue }) => {
                 marginRight: '15px'
               }}></div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 500, marginBottom: '5px' }}>{issue.title}</div>
+                <div style={{ fontWeight: 400, marginBottom: '5px' }}>{issue.title}</div>
                 <div style={{ fontSize: '0.8rem', color: '#7f8c8d', display: 'flex' }}>
                   <span style={{ marginRight: '10px' }}>
                     <FontAwesomeIcon icon={faCalendarAlt} /> {issue.date}
