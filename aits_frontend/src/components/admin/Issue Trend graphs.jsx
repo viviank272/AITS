@@ -43,7 +43,7 @@ const IssueByCategory = () => {
             {
                 label: "Issues by Category",
                 data: [25, 15, 10],
-                borderColor: "rgb(86, 255, 151)",
+                borderColor: "rgb(70, 275, 151)",
                 backgroundColor: "rgba(97, 86, 255, 0.2)",
                 tension: 0.4,
             },
