@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { IssuesProvider } from './context/IssuesContext';
 import './utils/fontawesome';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -72,97 +73,99 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 function App() {
   return (
     <AuthProvider>
-      <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={<Landing />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+      <IssuesProvider>
+        <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<Landing />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
-        {/* Admin Routes */}
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <AdminLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<AdminDashboard />} />
-          <Route path="users" element={<UserManagement />} />
-          <Route path="colleges" element={<CollegeManagement />} />
-          <Route path="programs" element={<Programs />} />
-          <Route path="students" element={<Students />} />
-          <Route path="issues" element={<AdminIssues />} />
-          <Route path="categories" element={<Categories />} />
-          <Route path="reports" element={<AdminReports />} />
-          <Route path="settings" element={<SystemSettings />} />
-          <Route path="roles" element={<RoleManagement />} />
-          <Route path="audit-logs" element={<AuditLogs />} />
-          <Route path="issue-trends" element={<IssueGraphs />} />
-        </Route>
+          {/* Admin Routes */}
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<AdminDashboard />} />
+            <Route path="users" element={<UserManagement />} />
+            <Route path="colleges" element={<CollegeManagement />} />
+            <Route path="programs" element={<Programs />} />
+            <Route path="students" element={<Students />} />
+            <Route path="issues" element={<AdminIssues />} />
+            <Route path="categories" element={<Categories />} />
+            <Route path="reports" element={<AdminReports />} />
+            <Route path="settings" element={<SystemSettings />} />
+            <Route path="roles" element={<RoleManagement />} />
+            <Route path="audit-logs" element={<AuditLogs />} />
+            <Route path="issue-trends" element={<IssueGraphs />} />
+          </Route>
 
-        {/* Lecturer Routes */}
-        <Route
-          path="/lecturer"
-          element={
-            <ProtectedRoute allowedRoles={['lecturer']}>
-              <LecturerLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<LecturerDashboard />} />
-          <Route path="assigned" element={<AssignedIssues />} />
-          <Route path="department" element={<DepartmentIssues />} />
-          <Route path="messages" element={<LecturerMessages />} />
-          <Route path="notifications" element={<LecturerNotifications />} />
-          <Route path="reports" element={<LecturerReports />} />
-          <Route path="settings" element={<LecturerSettings />} />
-          <Route path="issues/create" element={<CreateIssue />} />
-          <Route path="issues/:issueId" element={<IssueDetails />} />
-        </Route>
+          {/* Lecturer Routes */}
+          <Route
+            path="/lecturer"
+            element={
+              <ProtectedRoute allowedRoles={['lecturer']}>
+                <LecturerLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<LecturerDashboard />} />
+            <Route path="assigned" element={<AssignedIssues />} />
+            <Route path="department" element={<DepartmentIssues />} />
+            <Route path="messages" element={<LecturerMessages />} />
+            <Route path="notifications" element={<LecturerNotifications />} />
+            <Route path="reports" element={<LecturerReports />} />
+            <Route path="settings" element={<LecturerSettings />} />
+            <Route path="issues/create" element={<CreateIssue />} />
+            <Route path="issues/:issueId" element={<IssueDetails />} />
+          </Route>
 
-        {/* Student Routes */}
-        <Route
-          path="/student"
-          element={
-            <ProtectedRoute allowedRoles={['student']}>
-              <StudentLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<StudentDashboard />} />
-          <Route path="issues" element={<StudentIssues />} />
-          <Route path="issues/create" element={<CreateIssue />} />
-          <Route path="issues/:issueId" element={<IssueDetails />} />
-          <Route path="issues/:issueId/edit" element={<EditIssue />} />
-          <Route path="messages" element={<StudentMessages />} />
-          <Route path="notifications" element={<StudentNotifications />} />
-          <Route path="documents" element={<StudentDocuments />} />
-          <Route path="settings" element={<StudentSettings />} />
-        </Route>
+          {/* Student Routes */}
+          <Route
+            path="/student"
+            element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <StudentLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<StudentDashboard />} />
+            <Route path="issues" element={<StudentIssues />} />
+            <Route path="issues/create" element={<CreateIssue />} />
+            <Route path="issues/:issueId" element={<IssueDetails />} />
+            <Route path="issues/:issueId/edit" element={<EditIssue />} />
+            <Route path="messages" element={<StudentMessages />} />
+            <Route path="notifications" element={<StudentNotifications />} />
+            <Route path="documents" element={<StudentDocuments />} />
+            <Route path="settings" element={<StudentSettings />} />
+          </Route>
 
-        {/* Common routes for all authenticated users */}
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          }
-        />
-        
-        <Route
-          path="/docs/communication-guide"
-          element={
-            <ProtectedRoute>
-              <CommunicationGuide />
-            </ProtectedRoute>
-          }
-        />
-        
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+          {/* Common routes for all authenticated users */}
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/docs/communication-guide"
+            element={
+              <ProtectedRoute>
+                <CommunicationGuide />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </IssuesProvider>
     </AuthProvider>
   );
 }

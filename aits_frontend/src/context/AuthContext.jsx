@@ -27,7 +27,17 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     try {
-      const response = await apiLogin(credentials);
+      // Get the selected role from localStorage
+      const selectedRole = localStorage.getItem('selectedRole');
+      
+      // Include the role in the credentials
+      const credentialsWithRole = {
+        ...credentials,
+        role: selectedRole
+      };
+      
+      console.log('Sending login request with role:', credentialsWithRole);
+      const response = await apiLogin(credentialsWithRole);
       console.log('Login response:', response);
       
       const { token, refresh_token, user: userData } = response;
