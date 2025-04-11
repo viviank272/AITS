@@ -15,6 +15,7 @@ import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import NotFound from './pages/NotFound';
+import IssueGraphs from './components/admin/Issue Trend graphs';
 
 // Admin Pages
 import UserManagement from './pages/admin/UserManagement';
