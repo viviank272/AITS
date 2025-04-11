@@ -88,7 +88,7 @@ const IssueByCollege = () => {
             },
             title: {
                 display: true,
-                text: "Issues by College",
+                text: "Issues by the College",
             },
         },
     };
@@ -99,7 +99,7 @@ const IssueByCollege = () => {
 const IssueGraphs = () => {
     return (
         <div>
-            <h2>Issue Trends</h2>
+            <h2>Issues Trends</h2>
             <div style={{ marginBottom: "2rem" }}>
                 <IssueTrendGraphs />
             </div>
