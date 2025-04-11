@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useIssues } from '../../context/IssuesContext'
 import { PencilIcon, PaperClipIcon, ArrowLeftIcon, PhotoIcon } from '@heroicons/react/24/outline'
 import api from '../../services/api'
+import { toast } from 'react-toastify'
 
 const EditIssue = () => {
   const { issueId } = useParams()
@@ -12,23 +13,25 @@ const EditIssue = () => {
   const { getIssueById, updateIssue } = useIssues()
   const [issue, setIssue] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [error, setError] = useState(null)
   const [categories, setCategories] = useState([])
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     category: '',
     priority: 'medium',
-    attachments: []
+    files: []
   })
   const [selectedFiles, setSelectedFiles] = useState([])
-  const [uploading, setUploading] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Fetch categories from backend
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const response = await api.get('/issues/categories/')
+        console.log('Categories API Response:', response.data)
+        
         if (response.data && Array.isArray(response.data)) {
           // Sort categories in specific order: Administrative first, then Academic, then IT Support
           const sortedCategories = [...response.data].sort((a, b) => {
@@ -41,11 +44,15 @@ const EditIssue = () => {
             };
             return getOrderPriority(a) - getOrderPriority(b);
           });
+          console.log('Sorted Categories:', sortedCategories)
           setCategories(sortedCategories);
+        } else {
+          console.error('Invalid categories data format:', response.data)
+          setError('Invalid categories data format received from server')
         }
       } catch (err) {
         console.error('Error fetching categories:', err);
-        setError('Failed to load categories');
+        setError('Failed to load categories: ' + (err.response?.data?.message || err.message));
       }
     };
 
@@ -58,6 +65,8 @@ const EditIssue = () => {
       
       try {
         const issueData = await getIssueById(issueId)
+        console.log('Fetched issue data:', issueData);
+        
         if (!issueData) {
           setError('Issue not found')
           return
@@ -70,14 +79,33 @@ const EditIssue = () => {
         }
 
         setIssue(issueData)
-        setFormData({
+        
+        // Get the category ID from the issue data
+        let categoryId;
+        if (issueData.category) {
+          categoryId = typeof issueData.category === 'object' ? issueData.category.id : issueData.category;
+        } else if (issueData.category_id) {
+          categoryId = issueData.category_id;
+        }
+
+        console.log('Category extraction:', {
+          rawCategory: issueData.category,
+          rawCategoryId: issueData.category_id,
+          extractedId: categoryId
+        });
+
+        const formDataToSet = {
           title: issueData.title || '',
           description: issueData.description || '',
-          category: issueData.category?.id || issueData.category || '',
+          category: categoryId ? String(categoryId) : '',
           priority: issueData.priority || 'medium',
-          attachments: issueData.attachments || []
-        })
+          files: issueData.attachments || []
+        };
+
+        console.log('Setting form data:', formDataToSet);
+        setFormData(formDataToSet);
       } catch (err) {
+        console.error('Error fetching issue:', err);
         setError('Failed to fetch issue details')
       } finally {
         setLoading(false)
@@ -88,33 +116,45 @@ const EditIssue = () => {
   }, [issueId, currentUser?.uid])
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    try {
-      setUploading(true)
-      
-      // First, upload any new files
-      const formDataWithFiles = new FormData()
-      selectedFiles.forEach(file => {
-        formDataWithFiles.append('files[]', file)
-      })
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
 
-      // Add other form data
-      formDataWithFiles.append('title', formData.title)
-      formDataWithFiles.append('description', formData.description)
-      formDataWithFiles.append('category', formData.category)
-      formDataWithFiles.append('priority', formData.priority)
-      
-      await updateIssue(issueId, formDataWithFiles)
-      navigate(`/student/issues/${issueId}`)
-    } catch (err) {
-      setError('Failed to update issue')
+    try {
+      const formDataWithFiles = new FormData();
+      Object.keys(formData).forEach(key => {
+        if (key === 'files') {
+          formData.files.forEach(file => {
+            formDataWithFiles.append('files', file);
+          });
+        } else if (key === 'category') {
+          formDataWithFiles.append('category_id', formData.category);
+        } else {
+          formDataWithFiles.append(key, formData[key]);
+        }
+      });
+
+      console.log('Submitting form data:', {
+        ...Object.fromEntries(formDataWithFiles.entries()),
+        files: formData.files?.length || 0
+      });
+
+      await updateIssue(issueId, formDataWithFiles);
+      toast.success('Issue updated successfully!');
+      navigate('/student/issues');
+    } catch (error) {
+      console.error('Error updating issue:', error);
+      console.error('Error response:', error.response?.data);
+      setError(error.response?.data?.detail || 'Failed to update issue. Please try again.');
+      toast.error(error.response?.data?.detail || 'Failed to update issue. Please try again.');
     } finally {
-      setUploading(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target
+    console.log('Handle change:', { name, value, previousValue: formData[name] });
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -158,69 +198,82 @@ const EditIssue = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="title" className="block text-sm font-medium text-gray-700">
-                Title
-              </label>
-              <input
-                type="text"
-                id="title"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
+        <div>
+          <label htmlFor="title" className="block text-sm font-medium text-gray-700">
+            Title
+          </label>
+          <input
+            type="text"
+            id="title"
+            name="title"
+            value={formData.title}
+            onChange={handleChange}
                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="Enter a clear title for your issue"
-                required
-              />
-            </div>
+            required
+          />
+        </div>
 
-            <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                Description
-              </label>
-              <textarea
-                id="description"
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                rows={4}
+        <div>
+          <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+            Description
+          </label>
+          <textarea
+            id="description"
+            name="description"
+            value={formData.description}
+            onChange={handleChange}
+            rows={4}
                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="Provide a detailed description of the issue"
-                required
-              />
-            </div>
+            required
+          />
+        </div>
 
-            <div>
-              <label htmlFor="category" className="block text-sm font-medium text-gray-700">
-                Category
-              </label>
-              <select
-                id="category"
-                name="category"
-                value={formData.category}
-                onChange={handleChange}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                required
-              >
-                <option value="">Select a category</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+        <div>
+          <label htmlFor="category" className="block text-sm font-medium text-gray-700">
+            Category
+          </label>
+          <select
+            id="category"
+            name="category"
+            value={formData.category || ''}
+            onChange={handleChange}
+            className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+            required
+          >
+            <option value="">Select a category</option>
+            {categories.map((category) => {
+              const optionValue = String(category.id);
+              const isSelected = optionValue === formData.category;
+              console.log('Option comparison:', {
+                optionValue,
+                formDataCategory: formData.category,
+                isSelected,
+                categoryName: category.name
+              });
+              return (
+                <option 
+                  key={category.id} 
+                  value={optionValue}
+                >
+                  {category.name}
+                </option>
+              );
+            })}
+          </select>
+        </div>
 
-            <div>
+        <div>
               <label className="block text-sm font-medium text-gray-700">
                 Attachments
               </label>
               
               {/* Existing attachments */}
-              {formData.attachments.length > 0 && (
+              {formData.files.length > 0 && (
                 <div className="mt-1 p-3 bg-gray-50 rounded-md">
                   <p className="text-sm font-medium text-gray-700 mb-1">Current attachments:</p>
-                  {formData.attachments.map((attachment, index) => (
+                  {formData.files.map((attachment, index) => (
                     <div key={index} className="flex items-center space-x-2 text-sm text-gray-600">
                       <PaperClipIcon className="h-4 w-4 text-gray-400" />
                       <span className="flex-1">{attachment.name || attachment}</span>
@@ -244,7 +297,7 @@ const EditIssue = () => {
                           onChange={handleFileChange}
                           className="sr-only"
                         />
-                      </label>
+          </label>
                       <p className="pl-1">or drag and drop</p>
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
@@ -275,7 +328,7 @@ const EditIssue = () => {
                   ))}
                 </div>
               )}
-            </div>
+        </div>
 
             <div className="flex justify-end pt-2">
               <button
@@ -285,16 +338,16 @@ const EditIssue = () => {
               >
                 Cancel
               </button>
-              <button
-                type="submit"
-                disabled={uploading}
+          <button
+            type="submit"
+                disabled={isSubmitting}
                 className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <PencilIcon className="h-5 w-5 mr-2" />
-                {uploading ? 'Updating...' : 'Update Issue'}
-              </button>
-            </div>
-          </form>
+          >
+            <PencilIcon className="h-5 w-5 mr-2" />
+                {isSubmitting ? 'Updating...' : 'Update Issue'}
+          </button>
+        </div>
+      </form>
         </div>
       </div>
     </div>

@@ -75,7 +75,7 @@ const Login = () => {
 
       // Check if the user's role matches the selected role
       if (userType !== selectedRole) {
-        setError('You are not authorized to access this role. Please select the correct role.');
+        setError(`You are not authorized to access this role. Please select the correct role. Your role: ${userType}, Selected role: ${selectedRole}`);
         setLoading(false);
         return;
       }
@@ -95,7 +95,42 @@ const Login = () => {
           navigate('/');
       }
     } catch (err) {
-      setError(err.message || 'Failed to login. Please try again.');
+      console.error('Login error details:', err);
+      
+      // Try to extract more detailed error information
+      let errorMessage = '';
+      if (err.response?.data) {
+        const errorData = err.response.data;
+        if (typeof errorData === 'string') {
+          errorMessage = errorData;
+        } else if (errorData.detail) {
+          errorMessage = errorData.detail;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
+        } else if (typeof errorData === 'object') {
+          // Try to stringify any object
+          try {
+            errorMessage = JSON.stringify(errorData);
+          } catch (e) {
+            errorMessage = 'Unknown error format';
+          }
+        }
+      }
+      
+      // Handle specific error cases
+      if (err.response?.data?.error === 'Your account has been temporarily disabled. Please contact the administrator.') {
+        setError('This lecturer account has been temporarily disabled. Please contact the system administrator to enable it.');
+      } else if (err.response?.status === 403) {
+        setError(`Access denied: ${errorMessage || 'This might be because the account does not exist, the credentials are incorrect, or the account is not authorized for this role.'}`);
+      } else if (err.response?.status === 401) {
+        setError(`Invalid credentials: ${errorMessage || 'Please check your email and password.'}`);
+      } else if (errorMessage) {
+        setError(errorMessage);
+      } else {
+        setError(err.message || 'Failed to login. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -212,7 +247,7 @@ const Login = () => {
           <p className="text-xs text-gray-600">
             Don't have an account?{' '}
             <button
-              onClick={() => navigate('/#')}
+              onClick={() => navigate('/register')}
               className="text-[#1E9833] hover:text-[#167a2a] font-medium"
             >
               Register here

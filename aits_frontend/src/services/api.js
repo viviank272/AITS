@@ -1,11 +1,11 @@
 import axios from 'axios';
 
-// const API_URL = 'http://localhost:8000/api'; // Update this with your Django backend URL
-const API_BASE_URL = "https://amnamara.pythonanywhere.com/api";
+const API_URL = 'http://localhost:8000/api'; // Update this with your Django backend URL
+// const API_BASE_URL = "https://amnamara.pythonanywhere.com/api";
 
 // Create axios instance with default config
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -60,8 +60,22 @@ api.interceptors.response.use(
 export const login = async (credentials) => {
   console.log('Attempting login with:', credentials.email);
   try {
-    console.log('Login API URL:', `${API_BASE_URL}/users/login/`);
-    const response = await api.post('/users/login/', credentials);
+    console.log('Login API URL:', `${API_URL}/users/login/`);
+    
+    // Include role information in the request if available
+    const requestData = {
+      email: credentials.email,
+      password: credentials.password
+    };
+    
+    // Add role as a separate parameter in case the backend looks for it specifically
+    if (credentials.role) {
+      console.log(`Login attempt for role: ${credentials.role}`);
+      requestData.user_type = credentials.role; // Try with user_type instead of role
+    }
+    
+    console.log('Sending login request with data:', JSON.stringify(requestData));
+    const response = await api.post('/users/login/', requestData);
     console.log('Login successful. Response:', response.data);
     return response.data;
   } catch (error) {
@@ -71,6 +85,16 @@ export const login = async (credentials) => {
       console.error('Error response data:', error.response.data);
       console.error('Error response status:', error.response.status);
       console.error('Error response headers:', error.response.headers);
+      
+      // Add more specific error handling
+      if (error.response.status === 403) {
+        console.error('Access forbidden. This might be related to role permissions.');
+        // Try to extract more information from the error response
+        const errorData = error.response.data;
+        if (typeof errorData === 'object') {
+          console.error('Error details:', JSON.stringify(errorData));
+        }
+      }
     } else if (error.request) {
       console.error('No response received:', error.request);
     }
@@ -157,8 +181,24 @@ export const createIssue = async (issueData) => {
 };
 
 export const updateIssue = async (id, issueData) => {
-  const response = await api.put(`/issues/${id}/`, issueData);
-  return response.data;
+  try {
+    console.log('Updating issue with data:', {
+      id,
+      formData: Object.fromEntries(issueData.entries())
+    });
+    
+    const response = await api.patch(`/issues/${id}/update/`, issueData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    console.log('Update issue response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error in updateIssue:', error);
+    console.error('Error response:', error.response?.data);
+    throw error;
+  }
 };
 
 export const deleteIssue = async (id) => {
