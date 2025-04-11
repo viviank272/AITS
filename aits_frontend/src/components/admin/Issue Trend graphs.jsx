@@ -13,7 +13,7 @@ const IssueByStatus = () => {
             {
                 label: "Issues by Status",
                 data: [5, 5, 18, 6, 9, 4, 9],
-                borderColor: "rgba(54, 162, 235, 1)",
+                borderColor: "rgba(54, 37, 235, 1)",
                 backgroundColor: "rgba(205, 232, 250, 0.2)",
                 tension: 0.4,
             },
