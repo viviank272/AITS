@@ -72,7 +72,7 @@ const IssueByCollege = () => {
         datasets: [
             {
                 label: "Issues by College",
-                data: [20, 15, 10, 5, 25, 30, 12, 18, 22, 8],
+                data: [20, 15, 10, 5, 25, 40, 12, 18, 22, 8],
                 borderColor: "rgba(153, 102, 255, 1)",
                 backgroundColor: "rgba(153, 102, 255, 0.2)",
                 tension: 0.4,
