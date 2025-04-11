@@ -8,7 +8,7 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 
 const IssueByStatus = () => {
     const data = {
-        labels: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+        labels: ["Mon", "Tues", "Wed", "Thur", "Fri", "Sat", "Sun"],
         datasets: [
             {
                 label: "Issues by Status",
