@@ -204,7 +204,7 @@ function IssueDetails() {
       
       // Add the new comment to the list
       setComments(prevComments => [...prevComments, response]);
-      setNewComment('');
+    setNewComment('');
     } catch (error) {
       console.error('Error posting comment:', error);
       setCommentError('Failed to post comment. Please try again.');
@@ -387,14 +387,14 @@ function IssueDetails() {
 
         {/* Content */}
         <div className="px-6 py-4">
-          <div className="grid grid-cols-3 gap-6">
+          <div className="flex flex-row gap-6">
           {/* Main Content */}
-            <div className="col-span-2">
+            <div className="flex-1">
               <div className="space-y-6">
                 <div>
                   <h2 className="text-lg font-medium text-gray-900">Description</h2>
                   <p className="mt-2 text-gray-600">{issue.description}</p>
-                </div>
+            </div>
 
                 {/* Comments Section */}
                 <div className="mt-8">
@@ -440,14 +440,14 @@ function IssueDetails() {
                   </div>
 
                   <div className="mt-6 space-y-6">
-                    {comments.map((comment) => (
+                {comments.map((comment) => (
                       <div key={`comment-${comment.id || comment.created_at}`} className="flex space-x-3">
                         <div className="flex-shrink-0">
                           <UserCircleIcon className="h-8 w-8 text-gray-400" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="bg-white rounded-lg shadow-sm p-4">
-                            <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between">
                               <p className="text-sm font-medium text-gray-900">
                                 {comment.user_name || 'Anonymous'}
                               </p>
@@ -591,21 +591,31 @@ function IssueDetails() {
                     <ClockIcon className="h-5 w-5 text-gray-400 mr-2" />
                     <div>
                       <p className="text-xs text-gray-500">Created</p>
-                      <p className="text-sm font-medium text-gray-900">{issue.createdAt}</p>
+                      <p className="text-sm font-medium text-gray-900">{new Date(issue.created_at).toLocaleString()}</p>
                     </div>
                   </div>
                   <div className="flex items-start">
                     <UserIcon className="h-5 w-5 text-gray-400 mr-2" />
                     <div>
-                      <p className="text-xs text-gray-500">Student</p>
-                      <p className="text-sm font-medium text-gray-900">{issue.student}</p>
+                      <p className="text-xs text-gray-500">Owner</p>
+                      <p className="text-sm font-medium text-gray-900">{issue.student_name || 'Unknown'}</p>
                     </div>
                   </div>
                   <div className="flex items-start">
                     <TagIcon className="h-5 w-5 text-gray-400 mr-2" />
                     <div>
                       <p className="text-xs text-gray-500">Category</p>
-                      <p className="text-sm font-medium text-gray-900">{issue.category}</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {issue.category === 1 ? 'Academic Issues' :
+                         issue.category === 2 ? 'Administrative Issues' :
+                         issue.category === 3 ? 'IT Support' :
+                         issue.category === 4 ? 'Facilities & Infrastructure' :
+                         issue.category === 5 ? 'Library Services' :
+                         issue.category === 6 ? 'Student Life' :
+                         issue.category === 7 ? 'Security & Safety' :
+                         issue.category === 8 ? 'Compliance & Policies' :
+                         'Unknown Category'}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-start">
@@ -613,29 +623,17 @@ function IssueDetails() {
                     <div>
                       <p className="text-xs text-gray-500">Priority</p>
                       <p className={`text-sm font-medium ${
-                        issue.priority === 'Critical' ? 'text-red-700' :
-                        issue.priority === 'High' ? 'text-orange-700' :
-                        issue.priority === 'Medium' ? 'text-yellow-700' :
+                        issue.priority === 1 ? 'text-red-700' :
+                        issue.priority === 2 ? 'text-orange-700' :
+                        issue.priority === 3 ? 'text-yellow-700' :
                         'text-green-700'
-                      }`}>{issue.priority}</p>
-                      {isStudentView && (
-                        <div className="text-xs text-gray-500 mt-1 bg-blue-50 p-2 rounded border border-blue-100">
-                          <p className="mb-1">Priority was automatically assigned based on issue category:</p>
-                          <ul className="list-disc pl-4">
-                            <li><span className="font-medium">Academic</span> issues receive <span className="font-medium text-orange-700">High</span> priority</li>
-                            <li><span className="font-medium">Administrative</span> issues receive <span className="font-medium text-red-700">Critical</span> priority</li>
-                            {issue.category === 'Technical Support' && (
-                              <li><span className="font-medium">Technical Support</span> issues receive <span className="font-medium text-orange-700">High</span> priority</li>
-                            )}
-                            {issue.category === 'Registration' && (
-                              <li><span className="font-medium">Registration</span> issues receive <span className="font-medium text-yellow-700">Medium</span> priority</li>
-                            )}
-                            {issue.category === 'General' && (
-                              <li><span className="font-medium">General</span> issues receive <span className="font-medium text-green-700">Low</span> priority</li>
-                            )}
-                          </ul>
-                        </div>
-                      )}
+                      }`}>
+                        {issue.priority === 1 ? 'Critical' :
+                         issue.priority === 2 ? 'High' :
+                         issue.priority === 3 ? 'Medium' :
+                         issue.priority === 4 ? 'Low' :
+                         'Unknown Priority'}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-start">

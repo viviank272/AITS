@@ -276,6 +276,16 @@ export const deleteDepartment = async (id) => {
   return response.data;
 };
 
+export const getDepartmentsByCollege = async (collegeId) => {
+  const response = await api.get(`/academic/departments/college/${collegeId}/`);
+  return response.data;
+};
+
+export const getProgramsByDepartment = async (departmentId) => {
+  const response = await api.get(`/academic/programs/department/${departmentId}/`);
+  return response.data;
+};
+
 // Comment services
 export const getIssueComments = async (issueId) => {
   const response = await api.get(`/issues/${issueId}/comments/`);
