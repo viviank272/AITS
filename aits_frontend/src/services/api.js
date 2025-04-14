@@ -276,4 +276,15 @@ export const deleteDepartment = async (id) => {
   return response.data;
 };
 
+// Comment services
+export const getIssueComments = async (issueId) => {
+  const response = await api.get(`/issues/${issueId}/comments/`);
+  return response.data;
+};
+
+export const postComment = async (issueId, commentData) => {
+  const response = await api.post(`/issues/${issueId}/comments/`, commentData);
+  return response.data;
+};
+
 export default api; 
