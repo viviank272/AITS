@@ -71,7 +71,7 @@ export const login = async (credentials) => {
     // Add role as a separate parameter in case the backend looks for it specifically
     if (credentials.role) {
       console.log(`Login attempt for role: ${credentials.role}`);
-      requestData.user_type = credentials.role; // Try with user_type instead of role
+      requestData.user_type = credentials.role;
     }
     
     console.log('Sending login request with data:', JSON.stringify(requestData));
@@ -85,6 +85,10 @@ export const login = async (credentials) => {
       console.error('Error response data:', error.response.data);
       console.error('Error response status:', error.response.status);
       console.error('Error response headers:', error.response.headers);
+      console.error('Request URL:', error.config?.url);
+      console.error('Request method:', error.config?.method);
+      console.error('Request headers:', error.config?.headers);
+      console.error('Request data:', error.config?.data);
       
       // Add more specific error handling
       if (error.response.status === 403) {
