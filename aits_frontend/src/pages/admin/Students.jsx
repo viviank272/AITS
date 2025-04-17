@@ -249,13 +249,24 @@ const Students = () => {
         // Set programs state
         setStudents(programsData);
         
-        // Organize programs by department
+        // Organize programs by department and associate with colleges
         programsData.forEach(program => {
-          const deptName = program.department_name;
+          // Normalize department name by removing 'Department of ' prefix if present
+          const deptName = program.department_name.replace(/^Department of /i, '');
+          
+          // Add department to programsByDept
           if (!programsByDept[deptName]) {
             programsByDept[deptName] = [];
           }
           programsByDept[deptName].push(program.program_name);
+          
+          // Find the college this department belongs to
+          const collegeId = program.college_id;
+          const college = formattedColleges.find(c => c.id === collegeId);
+          
+          if (college && !college.departments.includes(deptName)) {
+            college.departments.push(deptName);
+          }
         });
         
         // If we didn't extract any programs by department, use mock data
@@ -291,24 +302,32 @@ const Students = () => {
     setError(null);
     try {
       const data = await getStudents();
+      console.log('Fetched students data:', data);
       
       // Transform API data to match our component's expected format
-      const formattedStudents = data.map(student => ({
-        id: student.student_id,
-        name: student.user_details.full_name,
-        studentNumber: student.student_number,
-        regNumber: student.registration_number,
-        email: student.user_details.email,
-        phone: student.user_details?.phone || 'N/A',
-        program: student.program_name,
-        college: student.college_name,
-        department: student.department_name,
-        year: student.year_level.toString(),
-        semester: student.semester_in_year.toString(),
-        status: student.enrollment_status,
-        lastLogin: student.user_details?.last_login || 'Never'
-      }));
+      const formattedStudents = data.map(student => {
+        // Ensure all required fields are present
+        const formattedStudent = {
+          id: student.student_id || student.id,
+          name: student.user_details?.full_name || student.name || 'N/A',
+          studentNumber: student.student_number || student.studentNumber || 'N/A',
+          regNumber: student.registration_number || student.regNumber || 'N/A',
+          email: student.user_details?.email || student.email || 'N/A',
+          phone: student.user_details?.phone || student.phone || 'N/A',
+          program: student.program_name || student.program || 'N/A',
+          college: student.college_name || student.college || 'N/A',
+          department: student.department_name || student.department || 'N/A',
+          year: (student.year_level || student.year || '1').toString(),
+          semester: (student.semester_in_year || student.semester || '1').toString(),
+          status: student.enrollment_status || student.status || 'active',
+          lastLogin: student.user_details?.last_login || student.lastLogin || 'Never'
+        };
+        
+        console.log('Formatted student:', formattedStudent);
+        return formattedStudent;
+      });
       
+      console.log('Formatted students:', formattedStudents);
       setStudents(formattedStudents);
     } catch (err) {
       console.error('Error fetching students:', err);
@@ -358,60 +377,75 @@ const Students = () => {
   const handleSaveStudent = async (studentData) => {
     try {
       setLoading(true);
+      setError(null);
+
+      // Debug the form data
+      debugStudentForm(studentData);
+
       let response;
-      
-      // Format the student data before sending to API
-      const formattedStudentData = {
-        ...studentData,
-        studentNumber: studentData.studentNumber, // Keep as string
-        year: parseInt(studentData.year),
-        semester: parseInt(studentData.semester),
-        program_id: parseInt(studentData.programId)
-      };
-      
       if (editingStudent) {
         // Update existing student
-        response = await updateStudent(editingStudent.id, formattedStudentData);
-        setEditingStudent(null);
-        toast.success('Student updated successfully');
+        response = await updateStudent(editingStudent.student_id, studentData);
+        // Format the updated student data
+        const formattedStudent = {
+          id: response.student_id,
+          name: response.user_details.full_name,
+          studentNumber: response.student_number,
+          regNumber: response.registration_number,
+          email: response.user_details.email,
+          phone: response.user_details?.phone || 'N/A',
+          program: response.program_name,
+          college: response.college_name,
+          department: response.department_name,
+          year: response.year_level.toString(),
+          semester: response.semester_in_year.toString(),
+          status: response.enrollment_status,
+          lastLogin: response.user_details?.last_login || 'Never'
+        };
+        // Update the students list immediately
+        setStudents(prevStudents => 
+          prevStudents.map(student => 
+            student.id === editingStudent.id ? formattedStudent : student
+          )
+        );
       } else {
-        // Add new student
-        console.log('Creating new student with data:', formattedStudentData);
-        response = await createStudent(formattedStudentData);
-        console.log('API response for new student:', response);
-        toast.success('Student added successfully');
+        // Create new student
+        response = await createStudent(studentData);
+        // Format the new student data
+        const formattedStudent = {
+          id: response.student_id,
+          name: response.user_details.full_name,
+          studentNumber: response.student_number,
+          regNumber: response.registration_number,
+          email: response.user_details.email,
+          phone: response.user_details?.phone || 'N/A',
+          program: response.program_name,
+          college: response.college_name,
+          department: response.department_name,
+          year: response.year_level.toString(),
+          semester: response.semester_in_year.toString(),
+          status: response.enrollment_status,
+          lastLogin: response.user_details?.last_login || 'Never'
+        };
+        // Add the new student to the list immediately
+        setStudents(prevStudents => [...prevStudents, formattedStudent]);
       }
-      
-      // Format the student data consistently
-      const formattedStudent = {
-        id: response.student_id,
-        name: response.user_details.full_name,
-        studentNumber: response.student_number,
-        regNumber: response.registration_number,
-        email: response.user_details.email,
-        program: response.program_name,
-        college: response.college_name,
-        department: response.department_name,
-        year: response.year_level.toString(),
-        semester: response.semester_in_year.toString(),
-        status: response.enrollment_status,
-        lastLogin: response.user_details?.last_login || 'Never'
-      };
-      
-      // Update the students list
-      if (editingStudent) {
-        setStudents(students.map(student => 
-          student.id === editingStudent.id ? formattedStudent : student
-        ));
-      } else {
-        setStudents([...students, formattedStudent]);
-      }
-      
+
+      // Close the dialog and reset editing state
       setShowAddDialog(false);
-    } catch (err) {
-      console.error('Error saving student:', err);
-      console.error('Error details:', err.response?.data);
-      toast.error(err.response?.data?.error || 'Failed to save student');
+      setEditingStudent(null);
+
+      // Show success message
+      toast.success(
+        editingStudent 
+          ? 'Student updated successfully' 
+          : 'Student added successfully'
+      );
+
+    } catch (error) {
+      console.error('Error saving student:', error);
+      setError(error.response?.data?.error || 'Failed to save student');
+      toast.error('Failed to save student');
     } finally {
       setLoading(false);
     }
@@ -800,9 +834,9 @@ const StudentForm = ({ student, onSave, onCancel, colleges, years, semesters, lo
       const studentNumberRegex = /^24\d{8}$/;
       if (!studentNumberRegex.test(formData.studentNumber)) {
         setStudentNumberError('Student Number must be 10 digits starting with 24 (e.g., 2400725967)');
-        return;
-      }
-      
+      return;
+    }
+    
       // Convert to number and validate range
       const studentNumber = parseInt(formData.studentNumber);
       if (isNaN(studentNumber)) {

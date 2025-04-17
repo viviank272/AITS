@@ -1,26 +1,51 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Link, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { IssuesProvider } from '../context/IssuesContext';
 import useLogout from '../hooks/useLogout';
+import { getUserProfile } from '../services/api';
 import {
   HomeIcon,
   TicketIcon,
   BellIcon,
   Cog6ToothIcon,
-  ArrowLeftOnRectangleIcon
+  ArrowLeftOnRectangleIcon,
+  AcademicCapIcon,
+  BuildingLibraryIcon,
+  BuildingOfficeIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  UserCircleIcon
 } from '@heroicons/react/24/outline';
 
 const StudentLayout = () => {
   const { user } = useContext(AuthContext);
   const location = useLocation();
   const logout = useLogout();
+  const [studentProfile, setStudentProfile] = useState(null);
+  const [isProfileExpanded, setIsProfileExpanded] = useState(false);
 
-  const handleLogout = (e) => {
-    e.preventDefault();
-    logout();
-  };
+  // Fetch student profile data
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const profileData = await getUserProfile();
+        setStudentProfile(profileData);
+      } catch (error) {
+        console.error('Error fetching student profile:', error);
+      }
+    };
+
+    if (user && user.role === 'student') {
+      fetchProfile();
+    }
+  }, [user]);
+
+  // Don't render anything if not authenticated
+  if (!user || user.role !== 'student') {
+    return null;
+  }
 
   const navigation = [
     { name: 'Dashboard', href: '/student', icon: HomeIcon },
@@ -37,18 +62,47 @@ const StudentLayout = () => {
         <div className="flex min-h-0 flex-1 flex-col bg-[#1e2a3b] text-white">
           {/* Student Info */}
           <div className="p-6 border-b border-gray-700">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-xl font-semibold">
-                {user?.name?.split(' ').map(n => n[0]).join('')}
+            <div 
+              className="flex items-center space-x-4 cursor-pointer"
+              onClick={() => setIsProfileExpanded(!isProfileExpanded)}
+            >
+              <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-xl font-semibold relative">
+                <UserCircleIcon className="h-8 w-8 text-white" />
+                <div className="absolute bottom-0 right-0 bg-green-500 rounded-full p-1">
+                  <div className="h-2 w-2 rounded-full bg-white"></div>
+                </div>
               </div>
-              <div>
-                <h2 className="font-semibold">{user?.name || 'Student Name'}</h2>
-                <p className="text-sm text-gray-300">{user?.program || 'Computer Science'}</p>
+              <div className="flex-1">
+                <h2 className="font-semibold">{studentProfile?.full_name || 'Student Name'}</h2>
+                <p className="text-sm text-gray-300">#{studentProfile?.student_number || 'N/A'}</p>
               </div>
+              <button className="text-gray-400 hover:text-white">
+                {isProfileExpanded ? (
+                  <ChevronUpIcon className="h-5 w-5" />
+                ) : (
+                  <ChevronDownIcon className="h-5 w-5" />
+                )}
+              </button>
             </div>
-            <div className="mt-4 text-sm text-gray-300">
-              Student ID: {user?.studentId || '2100100100'}
-            </div>
+            
+            {isProfileExpanded && (
+              <div className="mt-4 animate-fade-in">
+                <div className="bg-[#2a3a4f] rounded-lg p-3 space-y-2">
+                  <div className="flex items-center space-x-2 group">
+                    <AcademicCapIcon className="h-4 w-4 text-gray-400 group-hover:text-blue-400" />
+                    <span className="text-sm text-gray-300 group-hover:text-white">{studentProfile?.program || 'Program'}</span>
+                  </div>
+                  <div className="flex items-center space-x-2 group">
+                    <BuildingLibraryIcon className="h-4 w-4 text-gray-400 group-hover:text-blue-400" />
+                    <span className="text-sm text-gray-300 group-hover:text-white">{studentProfile?.college_name || 'College'}</span>
+                  </div>
+                  <div className="flex items-center space-x-2 group">
+                    <BuildingOfficeIcon className="h-4 w-4 text-gray-400 group-hover:text-blue-400" />
+                    <span className="text-sm text-gray-300 group-hover:text-white">{studentProfile?.department_name || 'Department'}</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Navigation */}
@@ -80,7 +134,10 @@ const StudentLayout = () => {
               
               {/* Logout Button */}
               <button
-                onClick={handleLogout}
+                onClick={(e) => {
+                  e.preventDefault();
+                  logout();
+                }}
                 className="w-full flex items-center px-6 py-3 text-sm text-gray-300 hover:bg-[#2a3a4f] hover:text-white"
               >
                 <ArrowLeftOnRectangleIcon className="mr-3 h-5 w-5 text-gray-400" />

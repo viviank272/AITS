@@ -4,7 +4,7 @@ const API_URL = 'http://localhost:8000/api'; // Update this with your Django bac
 // const API_BASE_URL = "https://amnamara.pythonanywhere.com/api";
 
 // Create axios instance with default config
-const api = axios.create({
+export const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
@@ -56,60 +56,126 @@ api.interceptors.response.use(
   }
 );
 
-// Auth services
-export const login = async (credentials) => {
-  console.log('Attempting login with:', credentials.email);
-  try {
-    console.log('Login API URL:', `${API_URL}/users/login/`);
-    
-    // Include role information in the request if available
-    const requestData = {
-      email: credentials.email,
-      password: credentials.password
-    };
-    
-    // Add role as a separate parameter in case the backend looks for it specifically
-    if (credentials.role) {
-      console.log(`Login attempt for role: ${credentials.role}`);
-      requestData.user_type = credentials.role;
-    }
-    
-    console.log('Sending login request with data:', JSON.stringify(requestData));
-    const response = await api.post('/users/login/', requestData);
-    console.log('Login successful. Response:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('Login failed:', error.message);
-    console.error('Full error object:', error);
-    if (error.response) {
-      console.error('Error response data:', error.response.data);
-      console.error('Error response status:', error.response.status);
-      console.error('Error response headers:', error.response.headers);
-      console.error('Request URL:', error.config?.url);
-      console.error('Request method:', error.config?.method);
-      console.error('Request headers:', error.config?.headers);
-      console.error('Request data:', error.config?.data);
-      
-      // Add more specific error handling
-      if (error.response.status === 403) {
-        console.error('Access forbidden. This might be related to role permissions.');
-        // Try to extract more information from the error response
-        const errorData = error.response.data;
-        if (typeof errorData === 'object') {
-          console.error('Error details:', JSON.stringify(errorData));
-        }
-      }
-    } else if (error.request) {
-      console.error('No response received:', error.request);
-    }
-    throw error;
-  }
+// Add a function to clear all auth data
+export const clearAuthData = () => {
+  localStorage.removeItem('access');
+  localStorage.removeItem('refreshToken');
+  localStorage.removeItem('user');
+  localStorage.removeItem('selectedRole');
+  delete api.defaults.headers.common['Authorization'];
 };
 
 export const logout = async () => {
-  const refresh_token = localStorage.getItem('refreshToken');
-  const response = await api.post('/users/logout/', { refresh_token });
-  return response.data;
+  try {
+    const refresh_token = localStorage.getItem('refreshToken');
+    const access_token = localStorage.getItem('access');
+    
+    if (refresh_token && access_token) {
+      // Create a temporary axios instance for logout
+      const logoutApi = axios.create({
+        baseURL: API_URL,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${access_token}`
+        }
+      });
+      
+      // First clear local data
+      clearAuthData();
+      
+      // Then try to logout on the server
+      await logoutApi.post('/users/logout/', { refresh_token });
+    } else {
+      // If no tokens exist, just clear local data
+      clearAuthData();
+    }
+  } catch (error) {
+    console.error('Logout error:', error);
+    // Even if the server logout fails, we've already cleared local data
+  }
+};
+
+export const login = async (data) => {
+  console.log('Attempting login with:', data);
+  try {
+    // Clear any existing auth data before login
+    clearAuthData();
+    
+    // Log current token state before login
+    console.log('Current token state before login:', {
+      access: localStorage.getItem('access'),
+      refresh: localStorage.getItem('refreshToken'),
+      user: localStorage.getItem('user'),
+      role: localStorage.getItem('selectedRole')
+    });
+
+    // Log the request data
+    console.log('Sending login request with data:', JSON.stringify(data));
+
+    const response = await axios.post(`${API_URL}/users/login/`, data, {
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+    
+    // Log the response
+    console.log('Login successful. Response:', response.data);
+
+    // Parse user data if it's a string
+    let userData = response.data.user;
+    if (typeof userData === 'string') {
+      try {
+        userData = JSON.parse(userData);
+      } catch (e) {
+        console.error('Error parsing user data:', e);
+        throw new Error('Invalid user data format received from server');
+      }
+    }
+
+    // Ensure userData is an object
+    if (typeof userData !== 'object' || userData === null) {
+      throw new Error('Invalid user data format received from server');
+    }
+
+    // Store tokens and user data
+    localStorage.setItem('access', response.data.access);
+    localStorage.setItem('refreshToken', response.data.refresh);
+    localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem('selectedRole', userData.role);
+
+    // Update axios default headers
+    axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
+
+    // Log the new token state after login
+    console.log('New token state after login:', {
+      access: localStorage.getItem('access'),
+      refresh: localStorage.getItem('refreshToken'),
+      user: userData, // Log the parsed object instead of the string
+      role: localStorage.getItem('selectedRole')
+    });
+
+    return {
+      access: response.data.access,
+      refresh: response.data.refresh,
+      user: userData
+    };
+  } catch (error) {
+    console.error('Login error:', error);
+    clearAuthData();
+    
+    // Enhance error message for better debugging
+    if (error.response) {
+      if (error.response.status === 401) {
+        throw new Error('Invalid credentials');
+      } else if (error.response.status === 400) {
+        if (error.response.data?.needs_password) {
+          throw new Error('Password not set. Please set your password first.');
+        }
+        throw new Error(error.response.data?.error || 'Invalid request');
+      }
+    }
+    throw error;
+  }
 };
 
 export const register = async (userData) => {
@@ -130,6 +196,11 @@ export const updateProfile = async (profileData) => {
 // User services
 export const getStudents = async () => {
   const response = await api.get('/users/students/');
+  return response.data;
+};
+
+export const getUserProfile = async () => {
+  const response = await api.get('/users/profile/');
   return response.data;
 };
 
@@ -295,6 +366,16 @@ export const getIssueComments = async (issueId) => {
 export const postComment = async (issueId, commentData) => {
   const response = await api.post(`/issues/${issueId}/comments/`, commentData);
   return response.data;
+};
+
+export const setStudentPassword = async (data) => {
+  try {
+    const response = await api.post('/users/set-password/', data);
+    return response.data;
+  } catch (error) {
+    console.error('Set password error:', error);
+    throw error;
+  }
 };
 
 export default api; 

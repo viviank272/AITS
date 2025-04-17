@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Box, Typography, TextField, Button, Paper, Alert } from '@mui/material';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
 const Register = () => {
   const navigate = useNavigate();
+  const [selectedRole, setSelectedRole] = useState('');
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
+    registrationNumber: '',
+    studentNumber: '',
     password: '',
     confirmPassword: '',
     verificationCode: ''
@@ -18,6 +21,15 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [verificationStep, setVerificationStep] = useState(false);
   const [verificationMessage, setVerificationMessage] = useState('');
+
+  useEffect(() => {
+    const role = localStorage.getItem('selectedRole');
+    if (!role) {
+      navigate('/');
+      return;
+    }
+    setSelectedRole(role);
+  }, [navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -39,17 +51,25 @@ const Register = () => {
     }
 
     try {
+      const requestBody = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        password: formData.password,
+        role: selectedRole
+      };
+
+      if (selectedRole === 'student') {
+        requestBody.registrationNumber = formData.registrationNumber;
+        requestBody.studentNumber = formData.studentNumber;
+      }
+
       const response = await fetch('http://localhost:8000/api/users/register/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          email: formData.email,
-          password: formData.password
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await response.json();
@@ -99,6 +119,45 @@ const Register = () => {
     }
   };
 
+  const renderStudentForm = () => (
+    <>
+      <TextField
+        margin="normal"
+        required
+        fullWidth
+        id="registrationNumber"
+        label="Registration Number"
+        name="registrationNumber"
+        value={formData.registrationNumber}
+        onChange={handleChange}
+      />
+      <TextField
+        margin="normal"
+        required
+        fullWidth
+        id="studentNumber"
+        label="Student Number"
+        name="studentNumber"
+        value={formData.studentNumber}
+        onChange={handleChange}
+      />
+    </>
+  );
+
+  const renderAdminLecturerForm = () => (
+    <TextField
+      margin="normal"
+      required
+      fullWidth
+      id="email"
+      label="Email Address"
+      name="email"
+      autoComplete="email"
+      value={formData.email}
+      onChange={handleChange}
+    />
+  );
+
   return (
     <Container component="main" maxWidth="xs">
       <Box
@@ -111,7 +170,7 @@ const Register = () => {
       >
         <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
           <Typography component="h1" variant="h5" align="center" gutterBottom>
-            {verificationStep ? 'Verify Your Email' : 'Register'}
+            {verificationStep ? 'Verify Your Email' : `Register as ${selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)}`}
           </Typography>
           {verificationMessage && (
             <Alert severity="info" sx={{ mb: 2 }}>
@@ -148,17 +207,7 @@ const Register = () => {
                   value={formData.lastName}
                   onChange={handleChange}
                 />
-                <TextField
-                  margin="normal"
-                  required
-                  fullWidth
-                  id="email"
-                  label="Email Address"
-                  name="email"
-                  autoComplete="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                />
+                {selectedRole === 'student' ? renderStudentForm() : renderAdminLecturerForm()}
                 <TextField
                   margin="normal"
                   required
