@@ -27,17 +27,20 @@ export const AuthProvider = ({ children }) => {
     if (isValidUser(newUser)) {
       console.log('AuthContext - setting valid user state');
       setUser(newUser);
-      // Navigate based on role
-      if (newUser.role === 'student') {
-        console.log('AuthContext - navigating to student dashboard');
-        navigate('/student');
-      } else if (newUser.role === 'lecturer') {
-        console.log('AuthContext - navigating to lecturer dashboard');
-        navigate('/lecturer');
-      } else if (newUser.role === 'admin') {
-        console.log('AuthContext - navigating to admin dashboard');
-        navigate('/admin');
-      }
+      // Add a small delay to ensure state is updated before navigation
+      setTimeout(() => {
+        // Navigate based on role
+        if (newUser.role === 'student') {
+          console.log('AuthContext - navigating to student dashboard');
+          navigate('/student');
+        } else if (newUser.role === 'lecturer') {
+          console.log('AuthContext - navigating to lecturer dashboard');
+          navigate('/lecturer');
+        } else if (newUser.role === 'admin') {
+          console.log('AuthContext - navigating to admin dashboard');
+          navigate('/admin');
+        }
+      }, 100);
     } else {
       console.log('AuthContext - invalid user data:', newUser);
       setUser(null);

@@ -13,7 +13,7 @@ import LecturerDashboard from './pages/LecturerDashboard';
 import StudentDashboard from './pages/StudentDashboard';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
-import Register from './pages/Register';
+// import Register from './pages/Register';
 import NotFound from './pages/NotFound';
 
 // Admin Pages
@@ -79,7 +79,7 @@ function App() {
           {/* Public Routes */}
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          {/* <Route path="/register" element={<Register />} /> */}
 
           {/* Admin Routes */}
           <Route

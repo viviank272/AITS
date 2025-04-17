@@ -105,12 +105,6 @@ const Login = () => {
         throw new Error('Please select a role before logging in');
       }
 
-      // Clear form data
-      setFormData({
-        email: '',
-        password: '',
-      });
-
       const loginData = {
         email: formData.email.trim(),
         password: formData.password,
@@ -125,6 +119,12 @@ const Login = () => {
         localStorage.setItem('refreshToken', response.refresh);
         localStorage.setItem('user', JSON.stringify(response.user));
         localStorage.setItem('selectedRole', response.user.role);
+        
+        // Clear form data only after successful login
+        setFormData({
+          email: '',
+          password: '',
+        });
         
         // Redirect based on role
         if (response.user.role === 'admin') {

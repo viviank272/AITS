@@ -227,9 +227,19 @@ export const deleteStudent = async (studentId) => {
   return response.data;
 };
 
+export const getLecturersAndAdmins = async () => {
+  const response = await api.get('/users/lecturers-and-admins/');
+  return response.data;
+};
+
 // Issue services
 export const getAllIssues = async () => {
   const response = await api.get('/issues/');
+  return response.data;
+};
+
+export const getStatuses = async () => {
+  const response = await api.get('/issues/statuses/');
   return response.data;
 };
 
@@ -257,9 +267,14 @@ export const createIssue = async (issueData) => {
 
 export const updateIssue = async (id, issueData) => {
   try {
-    console.log('Updating issue with data:', {
+    const formDataEntries = {};
+    for (let [key, value] of issueData.entries()) {
+      formDataEntries[key] = value;
+    }
+    
+    console.log('Updating issue:', {
       id,
-      formData: Object.fromEntries(issueData.entries())
+      formData: formDataEntries
     });
     
     const response = await api.patch(`/issues/${id}/update/`, issueData, {
@@ -267,8 +282,14 @@ export const updateIssue = async (id, issueData) => {
         'Content-Type': 'multipart/form-data',
       },
     });
-    console.log('Update issue response:', response.data);
-    return response.data;
+    
+    console.log('Update issue response:', response);
+    
+    if (!response || !response.data) {
+      throw new Error('No response data received from server');
+    }
+    
+    return response;
   } catch (error) {
     console.error('Error in updateIssue:', error);
     console.error('Error response:', error.response?.data);

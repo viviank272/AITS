@@ -48,6 +48,7 @@ const AssignedIssues = () => {
 
   const priorities = [
     { id: 'all', name: 'All Priorities' },
+    { id: 'critical', name: 'Critical Priority' },
     { id: 'high', name: 'High Priority' },
     { id: 'medium', name: 'Medium Priority' },
     { id: 'low', name: 'Low Priority' }
@@ -82,6 +83,8 @@ const AssignedIssues = () => {
 
   const getPriorityColor = (priority) => {
     switch (priority) {
+      case 'critical':
+        return 'text-red-800';
       case 'high':
         return 'text-red-600';
       case 'medium':

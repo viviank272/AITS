@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
+import { getDepartments, getProgramsByDepartment } from '../../services/api';
 
 function UserForm({ user, onSubmit, onClose }) {
   const [formData, setFormData] = useState({
@@ -9,37 +10,79 @@ function UserForm({ user, onSubmit, onClose }) {
     full_name: '',
     role_id: '',
     department_id: '',
+    program_id: '',
     user_type: 'student',
     is_active: true
   });
 
-  // Mock data for dropdowns
+  const [departments, setDepartments] = useState([]);
+  const [programs, setPrograms] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Mock data for roles
   const roles = [
     { id: 1, name: 'Admin' },
     { id: 2, name: 'Lecturer' },
     { id: 3, name: 'Student' }
   ];
 
-  const departments = [
-    { id: 1, name: 'Computer Science' },
-    { id: 2, name: 'Information Systems' },
-    { id: 3, name: 'Software Engineering' }
-  ];
+  // Fetch departments on mount
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const depts = await getDepartments();
+        setDepartments(depts);
+      } catch (error) {
+        console.error('Error fetching departments:', error);
+      }
+    };
 
+    fetchDepartments();
+  }, []);
+
+  // Fetch programs when department changes or when user data is loaded
+  useEffect(() => {
+    const fetchPrograms = async () => {
+      const deptId = formData.department_id;
+      if (deptId) {
+        try {
+          const progs = await getProgramsByDepartment(deptId);
+          setPrograms(progs);
+        } catch (error) {
+          console.error('Error fetching programs:', error);
+        }
+      } else {
+        setPrograms([]);
+      }
+    };
+
+    fetchPrograms();
+  }, [formData.department_id]);
+
+  // Handle user data when it changes
   useEffect(() => {
     if (user) {
-      setFormData({
+      console.log('Setting form data for user:', user);
+      // Ensure we have the correct field names from the API response
+      const userData = {
         ...user,
+        department_id: user.department?.id || user.department_id,
+        program_id: user.program?.id || user.program_id,
         password: '' // Don't populate password for editing
-      });
+      };
+      console.log('Processed user data:', userData);
+      setFormData(userData);
     }
+    setLoading(false);
   }, [user]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === 'checkbox' ? checked : value,
+      // Reset program_id when department changes
+      ...(name === 'department_id' && { program_id: '' })
     }));
   };
 
@@ -47,6 +90,10 @@ function UserForm({ user, onSubmit, onClose }) {
     e.preventDefault();
     onSubmit(formData);
   };
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4">
@@ -164,6 +211,27 @@ function UserForm({ user, onSubmit, onClose }) {
                 {departments.map(dept => (
                   <option key={dept.id} value={dept.id}>
                     {dept.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="program_id" className="block text-sm font-medium text-gray-700">
+                Program
+              </label>
+              <select
+                name="program_id"
+                id="program_id"
+                value={formData.program_id}
+                onChange={handleChange}
+                required
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+              >
+                <option value="">Select a program</option>
+                {programs.map(program => (
+                  <option key={program.id} value={program.id}>
+                    {program.name}
                   </option>
                 ))}
               </select>

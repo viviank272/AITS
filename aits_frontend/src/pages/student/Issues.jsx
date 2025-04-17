@@ -89,24 +89,22 @@ function Issues() {
     fetchIssues();
   }, [navigate, user, logout, location.state]);
 
-  const filteredIssues = issues.filter(issue => {
-    const matchesSearch = issue.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         issue.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const statusName = issue.status_name || 
-                       (issue.status && typeof issue.status === 'object' ? issue.status.name : null);
-    
-    const categoryName = issue.category_name || 
-                        (issue.category && typeof issue.category === 'object' ? issue.category.name : null);
-    
-    const matchesStatus = filterStatus === 'all' || 
-                         (statusName && statusName.toLowerCase() === filterStatus);
-    
-    const matchesCategory = filterCategory === 'all' || 
-                           (categoryName === filterCategory);
-    
-    return matchesSearch && matchesStatus && matchesCategory;
-  });
+  const filteredIssues = (issues || [])
+    .filter(issue => {
+      if (!issue) return false;
+      
+      const matchesSearch = 
+        issue.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        issue.description?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesCategory = filterCategory === 'all' || 
+        (issue.category?.name || issue.category_name) === filterCategory;
+      const matchesStatus = filterStatus === 'all' || 
+        (issue.status?.name || issue.status_name) === filterStatus;
+
+      return matchesSearch && matchesCategory && matchesStatus;
+    })
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
   if (loading) {
     return (
