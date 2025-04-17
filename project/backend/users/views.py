@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.core.mail import send_mail
 import json
 from .models import Student
 from django.utils import timezone
@@ -23,6 +24,29 @@ def register_user(request):
     """
     # This is a placeholder for now
     return Response({"message": "User registration endpoint"}, status=status.HTTP_200_OK)
+# Register View    
+class RegisterView(APIView):
+    def post(self, request):
+        serializer = UserRegistrationSerializer(data=request.data)
+        if serializer.is_valid():
+            # Generate random password
+            password = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
+            user = serializer.save()
+            user.set_password(password)  # Hash the password
+            user.save()
+
+            # Send email with password
+            send_mail(
+                'Welcome to AITS - Your Login Credentials',
+                f'Your account has been created.\nEmail: {user.email}\nPassword: {password}\nPlease log in and change your password.',
+                'from@example.com',
+                [user.email],
+                fail_silently=False,
+            )
+
+            return Response({'message': 'Registration successful! Check your email for login credentials.'}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 @api_view(['POST', 'OPTIONS'])
 @permission_classes([AllowAny])

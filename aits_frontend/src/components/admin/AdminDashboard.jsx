@@ -88,7 +88,7 @@ const AdminDashboard = () => {
     users: [
       { 
         id: 'F9876543', 
-        name: 'Dr. Patricia Lee', 
+        name: 'Dr. Peter Wakholi', 
         role: 'Lecturer', 
         department: 'Computer Science',
         status: 'Active',

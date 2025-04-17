@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeftIcon, PhotoIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, PhotoIcon, PaperClipIcon } from '@heroicons/react/24/outline';
 import { createIssue, uploadFile } from '../../services/api';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -208,8 +208,8 @@ const CreateIssue = () => {
   };
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
+    <div className="h-full p-4">
+      <div className="mb-4">
         <button
           onClick={() => navigate(-1)}
           className="text-blue-600 hover:text-blue-800 flex items-center"
@@ -311,7 +311,7 @@ const CreateIssue = () => {
             </div>
 
             <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="description" className="block text-sm font-medium text-gray-700">
                 Description
               </label>
               <textarea
@@ -320,38 +320,40 @@ const CreateIssue = () => {
                 required
                 value={formData.description}
                 onChange={handleInputChange}
-                rows={6}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                rows={4}
+                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="Provide a detailed description of your issue"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700">
                 Attachments
               </label>
-              <div className="mt-1 border border-dashed border-gray-300 rounded-md p-6">
-                <div className="text-center">
-                  <PhotoIcon className="mx-auto h-12 w-12 text-gray-400" />
-                  <div className="mt-2">
-                    <label htmlFor="file-upload" className="cursor-pointer">
-                      <span className="text-blue-600 hover:text-blue-500">Upload files</span>
-                      <input
-                        id="file-upload"
-                        name="file-upload"
-                        type="file"
-                        multiple
-                        className="sr-only"
-                        onChange={handleFileChange}
-                      />
-                      <span className="text-gray-500"> or drag and drop</span>
-                    </label>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    PNG, JPG, PDF up to 10MB each
+              <div className="mt-1">
+                <div className="flex justify-center px-4 py-3 border-2 border-gray-300 border-dashed rounded-md">
+                  <div className="space-y-1 text-center">
+                    <PhotoIcon className="mx-auto h-8 w-8 text-gray-400" />
+                    <div className="flex text-sm text-gray-600">
+                      <label htmlFor="file-upload" className="relative cursor-pointer rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
+                        <span>Upload files</span>
+                        <input
+                          id="file-upload"
+                          type="file"
+                          multiple
+                          onChange={handleFileChange}
+                          className="sr-only"
+                        />
+                      </label>
+                      <p className="pl-1">or drag and drop</p>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      PNG, JPG, PDF up to 10MB each
                   </p>
+                  </div>
                 </div>
               </div>
+
               {formData.attachments.length > 0 && (
                 <ul className="mt-3 space-y-2">
                   {formData.attachments.map((file, index) => (

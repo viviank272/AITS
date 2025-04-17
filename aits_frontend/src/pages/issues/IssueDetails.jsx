@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { getIssueById } from '../../services/api';
+import { getIssueById, getIssueComments, postComment } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import {
   ArrowLeftIcon,
@@ -21,7 +21,7 @@ function IssueDetails() {
   const { issueId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const isStudentView = location.pathname.includes('/student/');
   const isLecturerView = location.pathname.includes('/lecturer/');
   
@@ -34,20 +34,33 @@ function IssueDetails() {
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [error, setError] = useState('');
+  const [commentError, setCommentError] = useState('');
 
   useEffect(() => {
     const fetchIssueDetails = async () => {
       setLoading(true);
       try {
         console.log('Fetching issue with ID:', issueId);
+        console.log('Current user:', user);
+        console.log('Auth token:', localStorage.getItem('access'));
+        
+        // First fetch the issue details
         const issueData = await getIssueById(issueId);
         console.log('Issue data received:', issueData);
         
         if (issueData) {
           setIssue(issueData);
-          // If comments are included in the response, set them
-          if (issueData.comments) {
-            setComments(issueData.comments);
+          
+          // Then try to fetch comments
+          try {
+            const commentsData = await getIssueComments(issueId);
+            console.log('Comments data received:', commentsData);
+            setComments(commentsData || []);
+          } catch (commentsError) {
+            console.error('Error fetching comments:', commentsError);
+            console.error('Comments error response:', commentsError.response?.data);
+            // Don't fail the whole component if comments fail
+            setComments([]);
           }
         } else {
           setError('Issue not found');
@@ -55,12 +68,19 @@ function IssueDetails() {
         }
       } catch (error) {
         console.error('Error fetching issue details:', error);
+        console.error('Error response:', error.response?.data);
+        console.error('Error status:', error.response?.status);
+        console.error('Error headers:', error.response?.headers);
         
-        if (error.message === 'Unauthorized') {
+        if (error.response?.status === 401) {
+          console.log('Unauthorized error detected, logging out...');
           await logout();
           navigate('/login', { state: { from: location.pathname } });
+        } else if (error.response?.status === 404) {
+          setError('Issue not found');
+          navigate(isStudentView ? '/student/issues' : '/lecturer/issues', { replace: true });
         } else {
-          setError('Failed to load issue details');
+          setError(`Failed to load issue details: ${error.response?.data?.message || error.message}`);
         }
       } finally {
         setLoading(false);
@@ -70,7 +90,7 @@ function IssueDetails() {
     if (issueId) {
       fetchIssueDetails();
     }
-  }, [issueId, navigate, isStudentView, location.pathname, logout]);
+  }, [issueId, navigate, isStudentView, location.pathname, logout, user]);
 
   const updateIssueStatus = (newStatus) => {
     // In a real app, this would be an API call
@@ -168,20 +188,27 @@ function IssueDetails() {
     setShowCloseModal(false);
   };
 
-  const addComment = () => {
+  const addComment = async () => {
     if (!newComment.trim()) return;
+    setCommentError('');
 
-    // Add the new comment
-    const newCommentObj = {
-      id: comments.length + 1,
-      user: isStudentView ? 'John Smith' : 'Dr. Sarah Wilson', // This would be the current user in a real app
-      role: isStudentView ? 'student' : 'lecturer',
-      timestamp: new Date().toLocaleString(),
-      content: newComment
-    };
-    
-    setComments(prevComments => [...prevComments, newCommentObj]);
+    try {
+      const commentData = {
+        content: newComment,
+        user: user.id,
+        user_type: user.user_type
+      };
+
+      const response = await postComment(issueId, commentData);
+      console.log('Comment posted successfully:', response);
+      
+      // Add the new comment to the list
+      setComments(prevComments => [...prevComments, response]);
     setNewComment('');
+    } catch (error) {
+      console.error('Error posting comment:', error);
+      setCommentError('Failed to post comment. Please try again.');
+    }
   };
 
   if (loading) {
@@ -360,9 +387,9 @@ function IssueDetails() {
 
         {/* Content */}
         <div className="px-6 py-4">
-          <div className="grid grid-cols-3 gap-6">
+          <div className="flex flex-row gap-6">
           {/* Main Content */}
-            <div className="col-span-2">
+            <div className="flex-1">
               <div className="space-y-6">
                 <div>
                   <h2 className="text-lg font-medium text-gray-900">Description</h2>
@@ -370,53 +397,71 @@ function IssueDetails() {
             </div>
 
                 {/* Comments Section */}
-                <div>
-                  <h2 className="text-lg font-medium text-gray-900 flex items-center">
-                    <ChatBubbleLeftIcon className="h-5 w-5 mr-2" />
-                    Comments ({comments.length})
-                  </h2>
-                  <div className="mt-2 space-y-4">
-                {comments.map((comment) => (
-                      <div 
-                        key={comment.id} 
-                        className={`rounded-lg p-4 ${
-                          comment.role === 'student' ? 'bg-blue-50 border-l-4 border-blue-300' : 'bg-gray-50 border-l-4 border-gray-300'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-gray-900 flex items-center">
-                            <UserCircleIcon className="h-5 w-5 mr-2" />
-                            {comment.user} 
-                            <span className="ml-2 text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-800">
-                              {comment.role === 'student' ? 'Student' : 'Staff'}
-                            </span>
-                          </span>
-                          <span className="text-sm text-gray-500">{comment.timestamp}</span>
+                <div className="mt-8">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-medium text-gray-900">Comments</h3>
+                  </div>
+                  
+                  {commentError && (
+                    <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
+                      <p className="text-sm text-red-600">{commentError}</p>
+                    </div>
+                  )}
+
+                  <div className="mt-4">
+                    <div className="flex space-x-3">
+                      <div className="flex-shrink-0">
+                        <UserCircleIcon className="h-8 w-8 text-gray-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="border border-gray-300 rounded-lg shadow-sm overflow-hidden">
+                          <div className="p-4">
+                            <textarea
+                              rows={3}
+                              value={newComment}
+                              onChange={(e) => setNewComment(e.target.value)}
+                              className="block w-full border-0 p-0 text-gray-900 placeholder-gray-500 focus:ring-0 sm:text-sm"
+                              placeholder="Add a comment..."
+                            />
+                          </div>
+                          <div className="bg-gray-50 px-4 py-3 flex justify-end">
+                            <button
+                              type="button"
+                              onClick={addComment}
+                              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            >
+                              <PaperAirplaneIcon className="h-4 w-4 mr-2" />
+                              Post Comment
+                            </button>
+                          </div>
                         </div>
-                        <p className="mt-2 text-gray-600">{comment.content}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 space-y-6">
+                {comments.map((comment) => (
+                      <div key={`comment-${comment.id || comment.created_at}`} className="flex space-x-3">
+                        <div className="flex-shrink-0">
+                          <UserCircleIcon className="h-8 w-8 text-gray-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="bg-white rounded-lg shadow-sm p-4">
+                        <div className="flex items-center justify-between">
+                              <p className="text-sm font-medium text-gray-900">
+                                {comment.user_name || 'Anonymous'}
+                              </p>
+                              <p className="text-sm text-gray-500">
+                                {new Date(comment.created_at).toLocaleString()}
+                              </p>
+                            </div>
+                            <p className="mt-2 text-sm text-gray-700">
+                              {comment.content}
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     ))}
-                  </div>
-              </div>
-
-                {/* Add Comment Section */}
-                <div>
-                  <h2 className="text-lg font-medium text-gray-900">Add Comment</h2>
-                  <div className="mt-2">
-                  <textarea
-                      rows="4"
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Type your comment here..."
-                  />
-                  <button
-                      onClick={addComment}
-                      className="mt-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center"
-                  >
-                      <PaperAirplaneIcon className="h-5 w-5 mr-2" />
-                    Post Comment
-                  </button>
                   </div>
                 </div>
 
@@ -546,21 +591,31 @@ function IssueDetails() {
                     <ClockIcon className="h-5 w-5 text-gray-400 mr-2" />
                     <div>
                       <p className="text-xs text-gray-500">Created</p>
-                      <p className="text-sm font-medium text-gray-900">{issue.createdAt}</p>
+                      <p className="text-sm font-medium text-gray-900">{new Date(issue.created_at).toLocaleString()}</p>
                     </div>
                   </div>
                   <div className="flex items-start">
                     <UserIcon className="h-5 w-5 text-gray-400 mr-2" />
                     <div>
-                      <p className="text-xs text-gray-500">Student</p>
-                      <p className="text-sm font-medium text-gray-900">{issue.student}</p>
+                      <p className="text-xs text-gray-500">Owner</p>
+                      <p className="text-sm font-medium text-gray-900">{issue.student_name || 'Unknown'}</p>
                     </div>
                   </div>
                   <div className="flex items-start">
                     <TagIcon className="h-5 w-5 text-gray-400 mr-2" />
                     <div>
                       <p className="text-xs text-gray-500">Category</p>
-                      <p className="text-sm font-medium text-gray-900">{issue.category}</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {issue.category === 1 ? 'Academic Issues' :
+                         issue.category === 2 ? 'Administrative Issues' :
+                         issue.category === 3 ? 'IT Support' :
+                         issue.category === 4 ? 'Facilities & Infrastructure' :
+                         issue.category === 5 ? 'Library Services' :
+                         issue.category === 6 ? 'Student Life' :
+                         issue.category === 7 ? 'Security & Safety' :
+                         issue.category === 8 ? 'Compliance & Policies' :
+                         'Unknown Category'}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-start">
@@ -568,29 +623,17 @@ function IssueDetails() {
                     <div>
                       <p className="text-xs text-gray-500">Priority</p>
                       <p className={`text-sm font-medium ${
-                        issue.priority === 'Critical' ? 'text-red-700' :
-                        issue.priority === 'High' ? 'text-orange-700' :
-                        issue.priority === 'Medium' ? 'text-yellow-700' :
+                        issue.priority === 1 ? 'text-red-700' :
+                        issue.priority === 2 ? 'text-orange-700' :
+                        issue.priority === 3 ? 'text-yellow-700' :
                         'text-green-700'
-                      }`}>{issue.priority}</p>
-                      {isStudentView && (
-                        <div className="text-xs text-gray-500 mt-1 bg-blue-50 p-2 rounded border border-blue-100">
-                          <p className="mb-1">Priority was automatically assigned based on issue category:</p>
-                          <ul className="list-disc pl-4">
-                            <li><span className="font-medium">Academic</span> issues receive <span className="font-medium text-orange-700">High</span> priority</li>
-                            <li><span className="font-medium">Administrative</span> issues receive <span className="font-medium text-red-700">Critical</span> priority</li>
-                            {issue.category === 'Technical Support' && (
-                              <li><span className="font-medium">Technical Support</span> issues receive <span className="font-medium text-orange-700">High</span> priority</li>
-                            )}
-                            {issue.category === 'Registration' && (
-                              <li><span className="font-medium">Registration</span> issues receive <span className="font-medium text-yellow-700">Medium</span> priority</li>
-                            )}
-                            {issue.category === 'General' && (
-                              <li><span className="font-medium">General</span> issues receive <span className="font-medium text-green-700">Low</span> priority</li>
-                            )}
-                          </ul>
-                        </div>
-                      )}
+                      }`}>
+                        {issue.priority === 1 ? 'Critical' :
+                         issue.priority === 2 ? 'High' :
+                         issue.priority === 3 ? 'Medium' :
+                         issue.priority === 4 ? 'Low' :
+                         'Unknown Priority'}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-start">

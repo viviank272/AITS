@@ -16,7 +16,9 @@ import {
   updateStudent,
   deleteStudent,
   getColleges,
-  getPrograms
+  getPrograms,
+  getDepartmentsByCollege,
+  getProgramsByDepartment
 } from '../../services/api';
 import { toast } from 'react-toastify';
 import { validateAcademicData, debugStudentForm, inspectProgramStructure } from '../../utils/academicDataDebugger';
@@ -24,21 +26,19 @@ import { validateAcademicData, debugStudentForm, inspectProgramStructure } from 
 const Students = () => {
   const [students, setStudents] = useState([]);
   const [colleges, setColleges] = useState([]);
-  const [programs, setPrograms] = useState([]);
-  const [programsByDepartment, setProgramsByDepartment] = useState({});
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [editingStudent, setEditingStudent] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterProgram, setFilterProgram] = useState('all');
   const [filterYear, setFilterYear] = useState('all');
   const [filterSemester, setFilterSemester] = useState('all');
+  const [filterProgram, setFilterProgram] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [editingStudent, setEditingStudent] = useState(null);
+  const [availablePrograms, setAvailablePrograms] = useState([]);
+  const [error, setError] = useState(null);
 
-  const years = ['all', '1', '2', '3', '4', '5'];
   const statuses = ['all', 'active', 'inactive', 'suspended'];
+  const years = ['all', '1', '2', '3', '4', '5'];
 
   // Get available semesters based on selected year
   const getAvailableSemesters = (selectedYear) => {
@@ -203,8 +203,8 @@ const Students = () => {
         if (!useRealData) {
           console.log('Using mock data for colleges and departments');
           setColleges(mockColleges);
-          setProgramsByDepartment(mockProgramsByDepartment);
-          setPrograms(
+          setAvailablePrograms(mockProgramsByDepartment);
+          setStudents(
             Object.entries(mockProgramsByDepartment).flatMap(([dept, programs]) => 
               programs.map(program => ({
                 program_id: Math.random().toString(36).substr(2, 9),
@@ -226,7 +226,6 @@ const Students = () => {
         }));
         
         // Extract unique departments and organize by college
-        const departmentsByCollege = {};
         const programsByDept = {};
         
         console.log('Full programs data structure:', programsData);
@@ -235,7 +234,7 @@ const Students = () => {
         if (programsData.length === 0) {
           console.warn('No program data available, using mock data');
           setColleges(mockColleges);
-          setProgramsByDepartment(mockProgramsByDepartment);
+          setAvailablePrograms(mockProgramsByDepartment);
           setLoading(false);
           return;
         }
@@ -248,115 +247,29 @@ const Students = () => {
         }
         
         // Set programs state
-        setPrograms(programsData);
+        setStudents(programsData);
         
+        // Organize programs by department
         programsData.forEach(program => {
-          // Check for different property names that might contain department name
-          let departmentName = null;
-          
-          // Try to get department_name directly
-          if (program.department_name) {
-            departmentName = program.department_name;
-          } 
-          // Try to get from department object
-          else if (program.department) {
-            if (typeof program.department === 'object') {
-              departmentName = program.department.dept_name;
-            } else if (typeof program.department === 'string') {
-              departmentName = program.department;
-            } else if (typeof program.department === 'number') {
-              // We have a department ID but not a name - will need to handle this
-              console.log('Found department by ID only:', program.department);
-            }
+          const deptName = program.department_name;
+          if (!programsByDept[deptName]) {
+            programsByDept[deptName] = [];
           }
-          
-          // Try to get college ID
-          let collegeId = null;
-          
-          if (typeof program.college === 'number') {
-            collegeId = program.college;
-          } else if (program.college_id) {
-            collegeId = program.college_id;
-          } else if (program.college && typeof program.college === 'object' && program.college.college_id) {
-            collegeId = program.college.college_id;
-          }
-          
-          // Make sure we have valid data
-          if (!collegeId || !departmentName) {
-            console.warn('Program missing required data:', program);
-            return;
-          }
-          
-          // Add department to college's department list
-          if (!departmentsByCollege[collegeId]) {
-            departmentsByCollege[collegeId] = new Set();
-          }
-          departmentsByCollege[collegeId].add(departmentName);
-          
-          // Add program to department's program list
-          if (!programsByDept[departmentName]) {
-            programsByDept[departmentName] = [];
-          }
-          programsByDept[departmentName].push(program.program_name || program.name);
+          programsByDept[deptName].push(program.program_name);
         });
-        
-        // If we didn't find any departments, use mock data
-        if (Object.keys(departmentsByCollege).length === 0) {
-          console.warn('No departments could be extracted from program data, using mock data');
-          setColleges(mockColleges);
-          setProgramsByDepartment(mockProgramsByDepartment);
-          setLoading(false);
-          return;
-        }
-        
-        // Log all departments by college before creating final structure
-        console.log('Departments by college (raw):', departmentsByCollege);
-        
-        // Update colleges with their departments
-        const collegesWithDepartments = formattedColleges.map(college => {
-          const depts = departmentsByCollege[college.id] 
-            ? Array.from(departmentsByCollege[college.id])
-            : [];
-            
-          console.log(`College ${college.name} (ID: ${college.id}) has departments:`, depts);
-          
-          // If this college has no departments, try to get them from mock data
-          if (depts.length === 0) {
-            const mockCollege = mockColleges.find(c => 
-              c.name.toLowerCase().includes(college.name.toLowerCase()) || 
-              college.name.toLowerCase().includes(c.name.toLowerCase())
-            );
-            
-            if (mockCollege) {
-              console.log(`Using mock departments for college ${college.name}:`, mockCollege.departments);
-              return {
-                ...college,
-                departments: mockCollege.departments
-              };
-            }
-          }
-          
-          return {
-            ...college,
-            departments: depts
-          };
-        });
-        
-        console.log('Final colleges with departments:', collegesWithDepartments);
-        console.log('Programs by department:', programsByDept);
         
         // If we didn't extract any programs by department, use mock data
         if (Object.keys(programsByDept).length === 0) {
           console.warn('No programs by department could be extracted, using mock data');
-          setProgramsByDepartment(mockProgramsByDepartment);
+          setAvailablePrograms(mockProgramsByDepartment);
         } else {
-          setProgramsByDepartment(programsByDept);
+          setAvailablePrograms(programsByDept);
         }
         
         // Validate the academic data structure
-        validateAcademicData(collegesWithDepartments, programsData, programsByDept);
+        validateAcademicData(formattedColleges, programsData, programsByDept);
         
-        setColleges(collegesWithDepartments);
+        setColleges(formattedColleges);
       } catch (err) {
         console.error('Error fetching academic data:', err);
         setError('Failed to load academic data. Please try again later.');
@@ -438,63 +351,63 @@ const Students = () => {
   }, [students, searchTerm, filterProgram, filterYear, filterSemester, filterStatus]);
 
   const handleAddStudent = () => {
-    setShowAddForm(true);
+    setShowAddDialog(true);
     setEditingStudent(null);
   };
 
   const handleSaveStudent = async (studentData) => {
     try {
+      setLoading(true);
+      let response;
+      
+      // Format the student data before sending to API
+      const formattedStudentData = {
+        ...studentData,
+        studentNumber: studentData.studentNumber, // Keep as string
+        year: parseInt(studentData.year),
+        semester: parseInt(studentData.semester),
+        program_id: parseInt(studentData.programId)
+      };
+      
       if (editingStudent) {
         // Update existing student
-        setLoading(true);
-        const updatedStudent = await updateStudent(editingStudent.id, studentData);
-        
-        setStudents(students.map(student => 
-          student.id === editingStudent.id ? { 
-            id: updatedStudent.student_id,
-            name: updatedStudent.user_details.full_name,
-            studentNumber: updatedStudent.student_number,
-            regNumber: updatedStudent.registration_number,
-            email: updatedStudent.user_details.email,
-            program: updatedStudent.program_name,
-            college: updatedStudent.college_name,
-            department: updatedStudent.department_name,
-            year: updatedStudent.year_level.toString(),
-            semester: updatedStudent.semester_in_year.toString(),
-            status: updatedStudent.enrollment_status,
-            lastLogin: updatedStudent.user_details?.last_login || 'Never'
-          } : student
-        ));
-        
+        response = await updateStudent(editingStudent.id, formattedStudentData);
         setEditingStudent(null);
         toast.success('Student updated successfully');
       } else {
         // Add new student
-        setLoading(true);
-        console.log('Creating new student with data:', studentData);
-        
-        const newStudent = await createStudent(studentData);
-        console.log('API response for new student:', newStudent);
-        
-        const formattedNewStudent = {
-          id: newStudent.student_id,
-          name: newStudent.user_details.full_name,
-          studentNumber: newStudent.student_number,
-          regNumber: newStudent.registration_number,
-          email: newStudent.user_details.email,
-          program: newStudent.program_name,
-          college: newStudent.college_name,
-          department: newStudent.department_name,
-          year: newStudent.year_level.toString(),
-          semester: newStudent.semester_in_year.toString(),
-          status: newStudent.enrollment_status,
-          lastLogin: 'Never'
-        };
-        
-        setStudents([...students, formattedNewStudent]);
-        setShowAddForm(false);
+        console.log('Creating new student with data:', formattedStudentData);
+        response = await createStudent(formattedStudentData);
+        console.log('API response for new student:', response);
         toast.success('Student added successfully');
       }
+      
+      // Format the student data consistently
+      const formattedStudent = {
+        id: response.student_id,
+        name: response.user_details.full_name,
+        studentNumber: response.student_number,
+        regNumber: response.registration_number,
+        email: response.user_details.email,
+        program: response.program_name,
+        college: response.college_name,
+        department: response.department_name,
+        year: response.year_level.toString(),
+        semester: response.semester_in_year.toString(),
+        status: response.enrollment_status,
+        lastLogin: response.user_details?.last_login || 'Never'
+      };
+      
+      // Update the students list
+      if (editingStudent) {
+        setStudents(students.map(student => 
+          student.id === editingStudent.id ? formattedStudent : student
+        ));
+      } else {
+        setStudents([...students, formattedStudent]);
+      }
+      
+      setShowAddDialog(false);
     } catch (err) {
       console.error('Error saving student:', err);
       console.error('Error details:', err.response?.data);
@@ -567,7 +480,7 @@ const Students = () => {
           className="px-4 py-2 border rounded-lg"
         >
           <option value="all">All Programs</option>
-          {programs.map(program => (
+          {students.map(program => (
             <option key={program.program_id} value={program.program_name}>
               {program.program_name}
             </option>
@@ -610,25 +523,23 @@ const Students = () => {
       </div>
 
       {/* Student Form */}
-      {(showAddForm || editingStudent) && (
+      {(showAddDialog || editingStudent) && (
         <StudentForm
           student={editingStudent}
           onSave={handleSaveStudent}
           onCancel={() => {
-            setShowAddForm(false);
+            setShowAddDialog(false);
             setEditingStudent(null);
           }}
           colleges={colleges}
           years={years.filter(y => y !== 'all')}
           semesters={['1', '2']}
-          programsByDepartment={programsByDepartment}
           loading={loading}
-          programs={programs}
         />
       )}
 
       {/* Loading State */}
-      {loading && !showAddForm && !editingStudent && (
+      {loading && !showAddDialog && !editingStudent && (
         <div className="flex justify-center items-center p-10">
           <FontAwesomeIcon icon={faSpinner} className="animate-spin text-3xl text-[#1e1e77]" />
           <span className="ml-2">Loading students...</span>
@@ -719,13 +630,14 @@ const Students = () => {
   );
 };
 
-const StudentForm = ({ student, onSave, onCancel, colleges, years, semesters, programsByDepartment, loading, programs }) => {
+const StudentForm = ({ student, onSave, onCancel, colleges, years, semesters, loading }) => {
   const [formData, setFormData] = useState({
     name: student?.name || '',
     regNumber: student?.regNumber || '',
     studentNumber: student?.studentNumber || '',
     email: student?.email || '',
     program: student?.program || '',
+    programId: student?.programId || null,
     college: student?.college || '',
     department: student?.department || '',
     year: student?.year || '1',
@@ -760,24 +672,21 @@ const StudentForm = ({ student, onSave, onCancel, colleges, years, semesters, pr
         
         // If department is set, load available programs
         if (student.department) {
-          setAvailablePrograms(programsByDepartment[student.department] || []);
+          setAvailablePrograms(availablePrograms[student.department] || []);
         }
       } else {
         console.warn('Could not find college with name:', student.college);
         console.log('Available colleges:', colleges);
       }
     }
-  }, [student, colleges, programsByDepartment]);
+  }, [student, colleges, availablePrograms]);
 
   // Handle college selection
-  const handleCollegeChange = (e) => {
+  const handleCollegeChange = async (e) => {
     const collegeId = e.target.value;
     setSelectedCollegeId(collegeId);
     
-    console.log('Selected college ID:', collegeId);
-    
     if (!collegeId) {
-      // Reset everything if no college is selected
       setFormData(prev => ({
         ...prev,
         college: '',
@@ -794,10 +703,7 @@ const StudentForm = ({ student, onSave, onCancel, colleges, years, semesters, pr
       (college) => college.id.toString() === collegeId.toString()
     );
     
-    console.log('Selected college object:', selectedCollege);
-    
     if (selectedCollege) {
-      // Set college name in form data
       setFormData(prev => ({
         ...prev,
         college: selectedCollege.name,
@@ -805,201 +711,119 @@ const StudentForm = ({ student, onSave, onCancel, colleges, years, semesters, pr
         program: ''
       }));
       
-      // Log detailed information about college departments
-      console.log('College object structure:', Object.keys(selectedCollege));
-      console.log('College departments type:', typeof selectedCollege.departments);
-      console.log('College departments value:', JSON.stringify(selectedCollege.departments));
-      
-      // Make sure departments is always an array
-      let departmentsToUse = [];
-      
-      if (selectedCollege.departments && Array.isArray(selectedCollege.departments)) {
-        departmentsToUse = selectedCollege.departments.filter(d => d);
+      try {
+        // Fetch departments for the selected college
+        const departments = await getDepartmentsByCollege(collegeId);
+        setAvailableDepartments(departments.map(dept => ({
+          id: dept.department_id,
+          name: dept.dept_name
+        })));
+      } catch (error) {
+        console.error('Error fetching departments:', error);
+        setAvailableDepartments([]);
       }
-      
-      console.log('Filtered departments to use:', departmentsToUse);
-      
-      // If we have departments, set them
-      if (departmentsToUse.length > 0) {
-        console.log(`Setting ${departmentsToUse.length} departments for college:`, selectedCollege.name);
-        
-        // Clean up any potential duplicates or formatting issues
-        const cleanedDepartments = departmentsToUse
-          .filter(dept => dept && typeof dept === 'string')
-          .map(dept => {
-            // Handle common formatting issues like "Department of Computer Science"
-            if (dept.toLowerCase().startsWith('department of ')) {
-              return dept.substring('department of '.length);
-            }
-            return dept;
-          });
-        
-        console.log('Final cleaned departments:', cleanedDepartments);
-        setAvailableDepartments(cleanedDepartments);
-      } else {
-        console.warn('Selected college has no departments or empty array:', selectedCollege.name);
-        
-        // Fallback: Use a hardcoded list of departments for testing
-        const fallbackDepartments = [
-          'Computer Science',
-          'Information Technology',
-          'Software Engineering',
-          'Data Science',
-          'Artificial Intelligence'
-        ];
-        
-        console.log('Using fallback departments:', fallbackDepartments);
-        setAvailableDepartments(fallbackDepartments);
-      }
-    } else {
-      console.warn('College not found with ID:', collegeId);
-      setFormData(prev => ({
-        ...prev,
-        college: '',
-        department: '',
-        program: ''
-      }));
-      setAvailableDepartments([]);
     }
     
-    // Reset programs when college changes
     setAvailablePrograms([]);
   };
 
   // Handle department selection
-  const handleDepartmentChange = (e) => {
-    const department = e.target.value;
-    console.log('Selected department:', department);
+  const handleDepartmentChange = async (e) => {
+    const departmentId = e.target.value;
+    const selectedDepartment = availableDepartments.find(dept => dept.id.toString() === departmentId);
     
-    if (!department) {
-      // Reset program if no department is selected
+    if (!departmentId || !selectedDepartment) {
       setFormData(prev => ({
         ...prev,
         department: '',
-        program: ''
+        program: '',
+        programId: null
       }));
       setAvailablePrograms([]);
       return;
     }
     
-    // Set department in form data
     setFormData(prev => ({
       ...prev,
-      department: department,
-      program: ''
+      department: selectedDepartment.name,
+      program: '',
+      programId: null
     }));
     
-    // Create variations of the department name to try
-    const departmentVariations = [
-      department,
-      `Department of ${department}`,
-      department.toLowerCase(),
-      `Department of ${department}`.toLowerCase()
-    ];
-    
-    // Try to find programs using different variations of the department name
-    let foundPrograms = [];
-    
-    for (const deptVariation of departmentVariations) {
-      if (programsByDepartment[deptVariation] && programsByDepartment[deptVariation].length > 0) {
-        foundPrograms = programsByDepartment[deptVariation];
-        console.log(`Found programs using department variation "${deptVariation}":`, foundPrograms);
-        break;
-      }
+    try {
+      // Fetch programs for the selected department
+      const programs = await getProgramsByDepartment(departmentId);
+      const formattedPrograms = programs.map(prog => ({
+        id: prog.program_id,
+        name: prog.program_name
+      }));
+      setAvailablePrograms(formattedPrograms);
+    } catch (error) {
+      console.error('Error fetching programs:', error);
+      setAvailablePrograms([]);
     }
+  };
+
+  // Handle program selection
+  const handleProgramChange = (e) => {
+    const programName = e.target.value;
+    const selectedProgram = availablePrograms.find(p => p.name === programName);
     
-    if (foundPrograms.length > 0) {
-      setAvailablePrograms(foundPrograms);
+    if (!selectedProgram) {
+      setFormData(prev => ({
+        ...prev,
+        program: '',
+        programId: null
+      }));
       return;
     }
     
-    // If still no programs, search through programs array directly
-    const programsForDepartment = programs
-      .filter(program => {
-        // Check all variations of department name
-        const programDept = program.department_name || 
-                          (program.department && typeof program.department === 'object' ? program.department.dept_name : program.department);
-                          
-        if (!programDept) return false;
-        
-        // Try different variations
-        return departmentVariations.some(variation => 
-          programDept.toLowerCase().includes(variation.toLowerCase())
-        );
-      })
-      .map(program => program.program_name || program.name);
-    
-    // Remove duplicates
-    const uniquePrograms = [...new Set(programsForDepartment)];
-    
-    if (uniquePrograms.length > 0) {
-      console.log('Found programs by searching program objects directly:', uniquePrograms);
-      setAvailablePrograms(uniquePrograms);
+    // Ensure we have a valid program ID
+    if (!selectedProgram.id) {
+      console.error('Selected program has no ID:', selectedProgram);
+      toast.error('Invalid program selected');
       return;
     }
     
-    console.warn('No programs found for department:', department);
-    
-    // Fallback: Use hardcoded programs for testing
-    const fallbackPrograms = {
-      'Computer Science': [
-        'Bachelor of Science in Computer Science',
-        'Master of Science in Computer Science',
-        'PhD in Computer Science'
-      ],
-      'Information Technology': [
-        'Bachelor of Information Technology',
-        'Master of Information Technology'
-      ],
-      'Software Engineering': [
-        'Bachelor of Software Engineering',
-        'Master of Software Engineering'
-      ],
-      'Data Science': [
-        'Bachelor of Science in Data Science',
-        'Master of Data Science'
-      ],
-      'Artificial Intelligence': [
-        'Bachelor of Artificial Intelligence',
-        'Master of Artificial Intelligence'
-      ]
-    };
-    
-    // Try variations of department name with fallback
-    for (const deptVariation of departmentVariations) {
-      if (fallbackPrograms[deptVariation]) {
-        console.log(`Using fallback programs for department variation "${deptVariation}":`);
-        setAvailablePrograms(fallbackPrograms[deptVariation]);
-        return;
-      }
-    }
-    
-    // Last resort - try matching parts of department name
-    for (const [fallbackDept, fallbackProgs] of Object.entries(fallbackPrograms)) {
-      if (department.toLowerCase().includes(fallbackDept.toLowerCase()) || 
-          fallbackDept.toLowerCase().includes(department.toLowerCase())) {
-        console.log(`Using partial match fallback programs for "${fallbackDept}":`);
-        setAvailablePrograms(fallbackProgs);
-        return;
-      }
-    }
-    
-    setAvailablePrograms([]);
+    setFormData(prev => ({
+      ...prev,
+      program: programName,
+      programId: selectedProgram.id
+    }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    // Validate that student number is an integer
-    if (formData.studentNumber && !/^\d+$/.test(formData.studentNumber)) {
-      setStudentNumberError('Student Number must contain only integers');
+    // Validate student number format (10 digits starting with 24)
+    if (formData.studentNumber) {
+      const studentNumberRegex = /^24\d{8}$/;
+      if (!studentNumberRegex.test(formData.studentNumber)) {
+        setStudentNumberError('Student Number must be 10 digits starting with 24 (e.g., 2400725967)');
+        return;
+      }
+      
+      // Convert to number and validate range
+      const studentNumber = parseInt(formData.studentNumber);
+      if (isNaN(studentNumber)) {
+        setStudentNumberError('Student Number must be a valid number');
+        return;
+      }
+      
+      // The number 2400725967 is within the valid range for a 32-bit integer
+      // so we don't need the range check anymore
+    }
+    
+    // Validate program ID
+    if (!formData.programId) {
+      toast.error('Please select a valid program');
       return;
     }
     
     console.log('Submitting form data:', formData);
     
     // Check if all required fields are filled
-    const requiredFields = ['name', 'regNumber', 'email', 'college', 'department', 'program', 'year', 'semester', 'status'];
+    const requiredFields = ['name', 'regNumber', 'email', 'college', 'department', 'program', 'programId', 'year', 'semester', 'status'];
     const missingFields = requiredFields.filter(field => !formData[field]);
     
     if (missingFields.length > 0) {
@@ -1026,7 +850,10 @@ const StudentForm = ({ student, onSave, onCancel, colleges, years, semesters, pr
           'Information Systems'
         ];
         
-        setAvailableDepartments(defaultDepartments);
+        setAvailableDepartments(defaultDepartments.map(dept => ({
+          id: Math.random().toString(36).substr(2, 9),
+          name: dept
+        })));
       }
     }, 1000); // Wait 1 second
 
@@ -1101,7 +928,7 @@ const StudentForm = ({ student, onSave, onCancel, colleges, years, semesters, pr
               >
                 <option value="">Select College</option>
                 {colleges.map(college => (
-                  <option key={college.id} value={college.id.toString()}>
+                  <option key={college.id} value={college.id}>
                     {college.name}
                   </option>
                 ))}
@@ -1110,58 +937,35 @@ const StudentForm = ({ student, onSave, onCancel, colleges, years, semesters, pr
             <div>
               <label className="block text-sm font-medium text-gray-700">Department</label>
               <select
-                value={formData.department}
+                value={formData.department ? availableDepartments.find(d => d.name === formData.department)?.id : ''}
                 onChange={handleDepartmentChange}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                 required
-                disabled={selectedCollegeId === ''}
+                disabled={!selectedCollegeId}
               >
-                {availableDepartments.length === 0 ? (
-                  <option value="">No departments available</option>
-                ) : (
-                  <>
                     <option value="">Select Department</option>
-                    {availableDepartments.map((dept, index) => {
-                      // Format the display text - remove "Department of" if present
-                      let displayName = dept;
-                      if (dept && typeof dept === 'string' && dept.toLowerCase().startsWith('department of ')) {
-                        displayName = dept.substring('department of '.length);
-                      }
-                      
-                      // Log the value being set
-                      console.log(`Department option ${index}:`, { original: dept, display: displayName });
-                      
-                      return (
-                        <option key={dept || index} value={displayName}>
-                          {displayName || 'Unknown Department'}
+                {availableDepartments.map(dept => (
+                  <option key={dept.id} value={dept.id}>
+                    {dept.name}
                         </option>
-                      );
-                    })}
-                  </>
-                )}
+                ))}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Program</label>
               <select
                 value={formData.program}
-                onChange={(e) => setFormData({ ...formData, program: e.target.value })}
+                onChange={handleProgramChange}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                 required
                 disabled={!formData.department}
               >
-                {availablePrograms.length === 0 ? (
-                  <option value="">No programs available</option>
-                ) : (
-                  <>
                     <option value="">Select Program</option>
-                    {availablePrograms.map(program => (
-                      <option key={program} value={program}>
-                        {program}
+                {availablePrograms.map(prog => (
+                  <option key={prog.id} value={prog.name}>
+                    {prog.name}
                       </option>
                     ))}
-                  </>
-                )}
               </select>
             </div>
             <div>

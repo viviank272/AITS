@@ -2,12 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getStudentIssues } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { PlusIcon, EyeIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, EyeIcon } from '@heroicons/react/24/outline';
 
 const StudentDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [issues, setIssues] = useState([]);
-  const [errorMessage, setErrorMessage] = useState('');
   const { logout } = useAuth();
   const [stats, setStats] = useState({
     openIssues: 0,
@@ -58,7 +57,6 @@ const StudentDashboard = () => {
   // Function to fetch issues
   const fetchIssues = async () => {
     setLoading(true);
-    setErrorMessage('');
     try {
       const response = await getStudentIssues();
       
@@ -108,7 +106,6 @@ const StudentDashboard = () => {
         });
       } else {
         console.error('Issues data is not in expected format:', response);
-        setErrorMessage('Failed to load issues. Please try again.');
       }
     } catch (error) {
       console.error('Error fetching issues:', error);
@@ -116,8 +113,6 @@ const StudentDashboard = () => {
       if (error.response?.status === 401) {
         console.log('Unauthorized error detected, logging out...');
         await logout();
-      } else {
-        setErrorMessage(`Failed to load issues: ${error.response?.data?.message || error.message}`);
       }
     } finally {
       setLoading(false);
@@ -284,12 +279,6 @@ const StudentDashboard = () => {
                 </Link>
               </div>
             </div>
-
-            {errorMessage && (
-              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-sm text-red-600">{errorMessage}</p>
-              </div>
-            )}
 
             {/* Issues Table */}
             <div className="bg-white shadow overflow-hidden sm:rounded-md">
