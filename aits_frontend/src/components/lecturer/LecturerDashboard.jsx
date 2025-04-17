@@ -5,7 +5,7 @@ import { PlusIcon } from '@heroicons/react/24/outline';
 const LecturerDashboard = () => {
   const [issues, setIssues] = useState([
     { id: 1, title: 'Missing Grades', description: 'Grades for CSC101 not posted', status: 'Pending' },
-    { id: 2, title: 'Lecture Notes', description: 'Notes for Week 4 not uploaded', status: 'Pending' },
+    { id: 2, title: 'Wrong marks', description: 'Marks Allocation is wrong', status: 'Pending' },
   ]);
 
   const resolveIssue = (id) => {
@@ -28,7 +28,7 @@ const LecturerDashboard = () => {
         </Link>
       </div>
        
-       
+
        <div className="grid grid-cols-1 gap-6">
         {issues.map(issue => (
           <div key={issue.id} className="border p-4 rounded-lg shadow-sm bg-white">
