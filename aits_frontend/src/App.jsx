@@ -53,6 +53,7 @@ import LecturerMessages from './pages/lecturer/Messages';
 import LecturerNotifications from './pages/lecturer/Notifications';
 import LecturerReports from './pages/lecturer/Reports';
 import LecturerSettings from './pages/lecturer/Settings';
+import { ResolvedIssuesContext } from './components/lecturer/ResolvedIssuesContext';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -123,6 +124,7 @@ function App() {
             <Route path="settings" element={<LecturerSettings />} />
             <Route path="issues/create" element={<CreateIssue />} />
             <Route path="issues/:issueId" element={<IssueDetails />} />
+            <Route path="resolved" element={<ResolvedIssuesContext />} />
           </Route>
 
           {/* Student Routes */}
