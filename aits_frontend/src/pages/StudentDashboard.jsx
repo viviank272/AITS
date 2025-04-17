@@ -29,7 +29,7 @@ const StudentDashboard = () => {
     
     if (issuesWithResponse.length === 0) return 'No data';
     
-    // Calculate time difference between creation and first response
+    // Calculate time difference between creation and first response;
     const totalResponseTime = issuesWithResponse.reduce((total, issue) => {
       // If we have a first_response_time field use that
       if (issue.first_response_time) {
