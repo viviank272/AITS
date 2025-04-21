@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Department, Role
+from .models import Department, Role, User
 from django.contrib.auth.models import User
 from .models import College
 
@@ -19,3 +19,7 @@ class RoleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Role
         fields = ['role_id', 'role_name', 'description', 'permissions', 'created_at']
+Class UserSerializer(serializers. ModelSerializers) :
+    Class Meta:
+        Model =Role
+        Fields =  '__all__' 
