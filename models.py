@@ -48,6 +48,11 @@ class User(models.Model):
     def __str__(self):
         return f"{self.username} ({self.full_name})"
 
+Class Student(models.Model):
+    student_ID = models. AutoField(primary_key=True) 
+    user_id = models. IntegerField() 
+    student_number = models.CharFeild(max_length =50,unique=True)
+
 
 
 
