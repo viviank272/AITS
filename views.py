@@ -31,3 +31,6 @@ class RoleViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
         return Response({"error": "permission query parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
 
+Class UserViewSet(viewsets.ModelViewSet):
+     queryset = User. objects. all() 
+     Serializer_class  =UserSerailizer 
