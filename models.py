@@ -40,13 +40,21 @@ class User(models.Model):
     password_hash = models.CharField(max_length=255)  
     full_name = models.CharField(max_length=255)  
     role_id = models.IntegerField()
-    department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name="users)
+    department_id  = models.ForeignKey(Department, on_delete=models.CASCADE, related_name="users)
     created_at = models.DateTimeField(auto_now_add=True)
      is_active = models.BooleanField(default=True) 
     user_type = models.CharField(max_length=50, choices=[('staff', 'Staff'), ('student', 'Student'), ('faculty', 'Faculty')])
 
     def __str__(self):
         return f"{self.username} ({self.full_name})"
+
+Class Student(models.Model):
+    student_id = models. AutoField(primary_key=True) 
+    user_id = models. IntegerField() 
+    student_number = models.CharFeild(max_length =50,unique=True)
+    college_id =  models.IntergerFeild()
+    program_id = models. Foreignkey(Program, on_delete=models. CASCADE, related_name="student) 
+    
 
 
 
