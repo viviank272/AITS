@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { IssuesProvider } from './context/IssuesContext';
 import './utils/fontawesome';
 import { ToastContainer } from 'react-toastify';
@@ -46,21 +46,23 @@ import CommunicationGuide from './pages/docs/CommunicationGuide';
 
 // Lecturer Pages
 import AssignedIssues from './pages/lecturer/AssignedIssues';
+import DepartmentIssues from './pages/lecturer/DepartmentIssues';
+import LecturerMessages from './pages/lecturer/Messages';
 import LecturerNotifications from './pages/lecturer/Notifications';
+import LecturerReports from './pages/lecturer/Reports';
 import LecturerSettings from './pages/lecturer/Settings';
+import LecturerCreateIssue from './pages/lecturer/CreateIssue';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }) => {
-  const storedUser = localStorage.getItem('user');
-  const user = storedUser ? JSON.parse(storedUser) : null;
-  const isAuthenticated = !!localStorage.getItem('access');
+  const { user, loading } = useAuth();
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+  if (loading) {
+    return <div>Loading...</div>;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user?.role)) {
-    return <Navigate to="/" replace />;
+  if (!user || !allowedRoles.includes(user.role)) {
+    return <Navigate to="/login" replace />;
   }
 
   return children;
@@ -111,9 +113,12 @@ function App() {
           >
             <Route index element={<LecturerDashboard />} />
             <Route path="assigned" element={<AssignedIssues />} />
+            <Route path="department" element={<DepartmentIssues />} />
+            <Route path="messages" element={<LecturerMessages />} />
             <Route path="notifications" element={<LecturerNotifications />} />
+            <Route path="reports" element={<LecturerReports />} />
             <Route path="settings" element={<LecturerSettings />} />
-            <Route path="issues/create" element={<CreateIssue />} />
+            <Route path="issues/create" element={<LecturerCreateIssue />} />
             <Route path="issues/:issueId" element={<IssueDetails />} />
           </Route>
 

@@ -9,9 +9,13 @@ import {
   ClockIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
-  XMarkIcon
+  XMarkIcon,
+  PencilIcon,
+  TrashIcon,
+  EyeIcon
 } from '@heroicons/react/24/outline';
-import { getLecturerIssues, updateIssue } from '../../services/api';
+import { getLecturerIssues, updateIssue, deleteIssue, getStatuses, getCategories } from '../../services/api';
+import { toast } from 'react-toastify';
 
 const AssignedIssues = () => {
   const navigate = useNavigate();
@@ -19,19 +23,67 @@ const AssignedIssues = () => {
   const [selectedPriority, setSelectedPriority] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedTimeframe, setSelectedTimeframe] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const [showActionsMenu, setShowActionsMenu] = useState(null);
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const actionsMenuRef = React.useRef(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [statusList, setStatusList] = useState([]);
+  const [categoryList, setCategoryList] = useState([]);
 
   useEffect(() => {
     fetchAssignedIssues();
+    fetchStatuses();
+    fetchCategories();
   }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (actionsMenuRef.current && !actionsMenuRef.current.contains(event.target)) {
+        setShowActionsMenu(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await getCategories();
+      console.log('Fetched categories:', response);
+      if (Array.isArray(response)) {
+        setCategoryList(response);
+      } else {
+        console.error('Category data is not in expected format:', response);
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
+  const fetchStatuses = async () => {
+    try {
+      const response = await getStatuses();
+      console.log('Fetched statuses:', response);
+      if (Array.isArray(response)) {
+        setStatusList(response);
+      } else {
+        console.error('Status data is not in expected format:', response);
+      }
+    } catch (error) {
+      console.error('Error fetching statuses:', error);
+    }
+  };
 
   const fetchAssignedIssues = async () => {
     try {
       setLoading(true);
-      // Fetch issues with assigned=true parameter
       const response = await getLecturerIssues({ assigned: true });
       
       console.log('Fetched assigned issues:', response);
@@ -111,28 +163,98 @@ const AssignedIssues = () => {
     navigate(`/lecturer/issues/${issueId}`);
   };
 
-  const handleStatusChange = async (issueId, newStatus) => {
+  const handleStatusChange = async (issueId, newStatusName) => {
+    if (!issueId) {
+      console.error('Issue ID is missing:', issueId);
+      setError('Cannot update issue: Missing issue ID');
+      return;
+    }
+
     try {
-      const response = await updateIssue(issueId, { status: newStatus });
-      
-      if (response && response.data) {
-        // Update local state to reflect the change
-        setIssues(issues.map(issue => 
-          issue.issue_id === issueId || issue.id === issueId
-            ? { ...issue, status: response.data.status, status_name: response.data.status_name }
-            : issue
-        ));
+      setIsUpdating(true);
+      // Find the status object that matches the new status name
+      const statusObj = statusList.find(s => s.name.toLowerCase() === newStatusName.toLowerCase());
+      if (!statusObj) {
+        console.error('Status not found:', newStatusName);
+        console.log('Available statuses:', statusList);
+        setError('Invalid status selected');
+        return;
       }
+
+      console.log('Updating status with:', {
+        issueId,
+        newStatusName,
+        statusObj
+      });
+
+      // Create FormData for the update
+      const formData = new FormData();
+      formData.append('status', statusObj.status_id);
+
+      // Update in the backend
+      const response = await updateIssue(issueId, formData);
+      console.log('Update response:', response);
+      
+      // Update the local state with the new status
+      setIssues(prevIssues => prevIssues.map(issue => {
+        if (issue.id === issueId || issue.issue_id === issueId) {
+          return {
+            ...issue,
+            status: statusObj,
+            status_name: statusObj.name,
+            updated_at: new Date().toISOString()
+          };
+        }
+        return issue;
+      }));
+
+      // Clear any existing error
+      setError('');
+      toast.success(`Issue status updated to ${statusObj.name}`);
     } catch (error) {
       console.error('Error updating issue status:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data
+      });
+      setError(error.response?.data?.detail || 'Failed to update issue status. Please try again.');
+      toast.error('Failed to update issue status');
+    } finally {
+      setIsUpdating(false);
     }
-    
-    setShowActionsMenu(null);
   };
 
   const handleActionsClick = (e, issueId) => {
     e.stopPropagation();
     setShowActionsMenu(showActionsMenu === issueId ? null : issueId);
+  };
+
+  const handleViewIssue = (e, issueId) => {
+    e.stopPropagation();
+    navigate(`/lecturer/issues/${issueId}`);
+  };
+
+  const handleEditIssue = (e, issueId) => {
+    e.stopPropagation();
+    navigate(`/lecturer/issues/${issueId}/edit`);
+  };
+
+  const handleDeleteIssue = async (e, issueId) => {
+    e.stopPropagation();
+    if (window.confirm('Are you sure you want to delete this issue?')) {
+      try {
+        setIsDeleting(true);
+        await deleteIssue(issueId);
+        setIssues(prevIssues => prevIssues.filter(issue => issue.issue_id !== issueId));
+        toast.success('Issue deleted successfully');
+      } catch (error) {
+        console.error('Error deleting issue:', error);
+        toast.error(error.response?.data?.message || 'Failed to delete issue');
+      } finally {
+        setIsDeleting(false);
+        setShowActionsMenu(null);
+      }
+    }
   };
 
   // Filter issues based on search and filters
@@ -150,10 +272,14 @@ const AssignedIssues = () => {
       (issue.status_name && issue.status_name.toLowerCase().replace(' ', '_') === selectedStatus) ||
       (issue.status?.name && issue.status.name.toLowerCase().replace(' ', '_') === selectedStatus);
 
+    const matchesCategory = selectedCategory === 'all' || 
+      (issue.category_name && issue.category_name.toLowerCase() === selectedCategory.toLowerCase()) ||
+      (issue.category?.name && issue.category.name.toLowerCase() === selectedCategory.toLowerCase());
+
     // Timeframe filtering would need date comparison logic
     const matchesTimeframe = selectedTimeframe === 'all'; // Simplified for now
 
-    return matchesSearch && matchesPriority && matchesStatus && matchesTimeframe;
+    return matchesSearch && matchesPriority && matchesStatus && matchesCategory && matchesTimeframe;
   });
 
   if (loading) {
@@ -212,12 +338,27 @@ const AssignedIssues = () => {
       <div className="flex space-x-4 mb-6">
         <select
           className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          value={selectedCategory}
+          onChange={(e) => setSelectedCategory(e.target.value)}
+        >
+          <option value="all">All Categories</option>
+          {categoryList.map(category => (
+            <option key={category.id} value={category.name}>
+              {category.name}
+            </option>
+          ))}
+        </select>
+
+        <select
+          className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
           value={selectedPriority}
           onChange={(e) => setSelectedPriority(e.target.value)}
         >
-          {priorities.map(priority => (
-            <option key={priority.id} value={priority.id}>{priority.name}</option>
-          ))}
+          <option value="all">All Priorities</option>
+          <option value="critical">Critical</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
         </select>
 
         <select
@@ -225,9 +366,11 @@ const AssignedIssues = () => {
           value={selectedStatus}
           onChange={(e) => setSelectedStatus(e.target.value)}
         >
-          {statuses.map(status => (
-            <option key={status.id} value={status.id}>{status.name}</option>
-          ))}
+          <option value="all">All Status</option>
+          <option value="open">Open</option>
+          <option value="in_progress">In Progress</option>
+          <option value="resolved">Resolved</option>
+          <option value="closed">Closed</option>
         </select>
 
         <select
@@ -235,9 +378,10 @@ const AssignedIssues = () => {
           value={selectedTimeframe}
           onChange={(e) => setSelectedTimeframe(e.target.value)}
         >
-          {timeframes.map(timeframe => (
-            <option key={timeframe.id} value={timeframe.id}>{timeframe.name}</option>
-          ))}
+          <option value="all">All Time</option>
+          <option value="today">Today</option>
+          <option value="week">This Week</option>
+          <option value="month">This Month</option>
         </select>
       </div>
 
@@ -260,8 +404,7 @@ const AssignedIssues = () => {
             {filteredIssues.map((issue) => (
               <tr 
                 key={issue.issue_id} 
-                className="hover:bg-gray-50 cursor-pointer"
-                onClick={() => handleIssueClick(issue.issue_id)}
+                className="hover:bg-gray-50"
               >
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">#{issue.issue_id}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -287,32 +430,32 @@ const AssignedIssues = () => {
                   {new Date(issue.created_at).toLocaleDateString()}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <div className="relative">
-                    <button 
-                      className="text-gray-400 hover:text-gray-500"
-                      onClick={(e) => handleActionsClick(e, issue.issue_id)}
-                    >
-                      <EllipsisVerticalIcon className="h-5 w-5" />
-                    </button>
-                    {showActionsMenu === issue.issue_id && (
-                      <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
-                        <div className="py-1">
-                          <button
-                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            onClick={() => handleStatusChange(issue.issue_id, 'in_progress')}
-                          >
-                            Mark as In Progress
-                          </button>
-                          <button
-                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            onClick={() => handleStatusChange(issue.issue_id, 'resolved')}
-                          >
-                            Mark as Resolved
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <select
+                    value={issue.status?.name || issue.status_name || 'Open'}
+                    onChange={(e) => {
+                      console.log('Status change requested:', {
+                        issueId: issue.issue_id,
+                        currentStatus: issue.status?.name || issue.status_name,
+                        newStatus: e.target.value
+                      });
+                      handleStatusChange(issue.issue_id, e.target.value);
+                    }}
+                    className="text-sm border rounded px-2 py-1 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={isUpdating}
+                  >
+                    {statusList.length > 0 
+                      ? statusList.map(status => (
+                          <option key={`status-option-${status.status_id}`} value={status.name}>
+                            {status.name}
+                          </option>
+                        ))
+                      : ['Open', 'In Progress', 'Resolved', 'Closed'].map(status => (
+                          <option key={`status-option-${status}`} value={status}>
+                            {status}
+                          </option>
+                        ))
+                    }
+                  </select>
                 </td>
               </tr>
             ))}

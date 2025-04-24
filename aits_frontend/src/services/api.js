@@ -9,48 +9,71 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  // Temporarily disabled for CORS testing
-  withCredentials: false,
+  withCredentials: true, // Enable CORS credentials
   timeout: 30000, // 30 second timeout
 });
 
 // Add token to requests if it exists
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('access');
-  console.log('Current token:', token);
-  console.log('Request URL:', config.url);
-  console.log('Request method:', config.method);
-  console.log('Request headers:', config.headers);
+  console.log('Request interceptor:', {
+    url: config.url,
+    method: config.method,
+    token: token ? 'present' : 'none',
+    currentHeaders: config.headers
+  });
   
   if (token) {
+    // Ensure headers object exists
+    config.headers = config.headers || {};
+    // Set Authorization header
     config.headers.Authorization = `Bearer ${token}`;
-    console.log('Authorization header added:', config.headers.Authorization);
+    console.log('Added Authorization header:', `Bearer ${token}`);
   } else {
-    console.log('No token found in localStorage');
+    console.log('No token available for request');
+    // Remove Authorization header if it exists
+    if (config.headers?.Authorization) {
+      delete config.headers.Authorization;
+    }
   }
   return config;
+}, (error) => {
+  console.error('Request interceptor error:', error);
+  return Promise.reject(error);
 });
 
 // Add response interceptor to handle token expiration
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    console.error('API Error:', {
+  async (error) => {
+    console.log('Response interceptor error:', {
+      url: error.config?.url,
       status: error.response?.status,
       data: error.response?.data,
-      headers: error.response?.headers,
-      config: error.config
+      isLoginRequest: error.config?.url.includes('/users/login/'),
+      headers: error.config?.headers,
+      method: error.config?.method
     });
     
     if (error.response?.status === 401) {
-      console.log('Unauthorized error detected, clearing auth data...');
-      // Clear auth data
-      localStorage.removeItem('access');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
-      localStorage.removeItem('selectedRole');
+      // Skip auth handling for login/logout endpoints
+      const isAuthEndpoint = error.config?.url.includes('/users/login/') || 
+                           error.config?.url.includes('/users/logout/');
       
-      return Promise.reject(new Error('Unauthorized'));
+      if (!isAuthEndpoint) {
+        console.log('Unauthorized error on protected endpoint, clearing auth data...');
+        // Clear auth data
+        clearAuthData();
+        
+        // Only redirect if we're not already on the login page
+        if (!window.location.pathname.includes('/login')) {
+          console.log('Redirecting to login page...');
+          window.location.href = '/login';
+          return Promise.reject(new Error('Session expired - Please log in again'));
+        }
+      } else {
+        console.log('Unauthorized error on auth endpoint, passing through...');
+      }
     }
     return Promise.reject(error);
   }
@@ -112,11 +135,7 @@ export const login = async (data) => {
     // Log the request data
     console.log('Sending login request with data:', JSON.stringify(data));
 
-    const response = await axios.post(`${API_URL}/users/login/`, data, {
-      headers: {
-        'Content-Type': 'application/json',
-      }
-    });
+    const response = await api.post('/users/login/', data);
     
     // Log the response
     console.log('Login successful. Response:', response.data);
@@ -143,8 +162,15 @@ export const login = async (data) => {
     localStorage.setItem('user', JSON.stringify(userData));
     localStorage.setItem('selectedRole', userData.role);
 
-    // Update axios default headers
-    axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
+    // Update api instance headers
+    api.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
+    
+    // Verify token is set
+    console.log('Verifying auth setup after login:', {
+      storedToken: localStorage.getItem('access'),
+      headerToken: api.defaults.headers.common['Authorization'],
+      role: userData.role
+    });
 
     // Log the new token state after login
     console.log('New token state after login:', {

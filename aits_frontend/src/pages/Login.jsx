@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import logoWhite from '../assets/logo-white.png';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
-import { login, setStudentPassword, clearAuthData } from '../services/api';
+import { setStudentPassword, clearAuthData } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -66,23 +68,7 @@ const Login = () => {
         role: selectedRole
       };
       
-      const response = await login(loginData);
-      if (response) {
-        // Store tokens and user data
-        localStorage.setItem('access', response.access);
-        localStorage.setItem('refreshToken', response.refresh);
-        localStorage.setItem('user', JSON.stringify(response.user));
-        localStorage.setItem('selectedRole', response.user.role);
-        
-        // Redirect based on role
-        if (response.user.role === 'admin') {
-          navigate('/admin');
-        } else if (response.user.role === 'lecturer') {
-          navigate('/lecturer');
-        } else if (response.user.role === 'student') {
-          navigate('/student');
-        }
-      }
+      await login(loginData);
     } catch (error) {
       console.error('Set password error:', error);
       if (error.response?.data?.error) {
@@ -111,32 +97,13 @@ const Login = () => {
         role: selectedRole
       };
       
-      const response = await login(loginData);
+      await login(loginData);
       
-      if (response && response.user) {
-        // Store tokens and user data
-        localStorage.setItem('access', response.access);
-        localStorage.setItem('refreshToken', response.refresh);
-        localStorage.setItem('user', JSON.stringify(response.user));
-        localStorage.setItem('selectedRole', response.user.role);
-        
-        // Clear form data only after successful login
-        setFormData({
-          email: '',
-          password: '',
-        });
-        
-        // Redirect based on role
-        if (response.user.role === 'admin') {
-          navigate('/admin');
-        } else if (response.user.role === 'lecturer') {
-          navigate('/lecturer');
-        } else if (response.user.role === 'student') {
-          navigate('/student');
-        }
-      } else {
-        throw new Error('Invalid login response');
-      }
+      // Clear form data only after successful login
+      setFormData({
+        email: '',
+        password: '',
+      });
     } catch (error) {
       console.error('Login error:', error);
       if (error.message === 'Password not set. Please set your password first.') {
