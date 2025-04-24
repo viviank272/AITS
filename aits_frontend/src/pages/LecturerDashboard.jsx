@@ -23,18 +23,34 @@ function LecturerDashboard() {
   });
   const [criticalPriorityIssues, setCriticalPriorityIssues] = useState([]);
   const [activeTab, setActiveTab] = useState('assigned');
-  const [selectedCategory, setSelectedCategory] = useState('All Categories');
-  const [selectedStatus, setSelectedStatus] = useState('All Status');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all');
   const [issues, setIssues] = useState({
     assigned: [],
     resolved: []
   });
   const [categoryDistribution, setCategoryDistribution] = useState([]);
   const [selectedTimeRange, setSelectedTimeRange] = useState('7');
+  const [assignedIssues, setAssignedIssues] = useState([]);
+  const [assignedLoading, setAssignedLoading] = useState(true);
+  const [categories, setCategories] = useState([]);
+  const [statuses, setStatuses] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Fetch categories
+        const categoriesResponse = await api.get('/issues/categories/');
+        if (categoriesResponse.data && Array.isArray(categoriesResponse.data)) {
+          setCategories(categoriesResponse.data);
+        }
+
+        // Fetch statuses
+        const statusesResponse = await api.get('/issues/statuses/');
+        if (statusesResponse.data && Array.isArray(statusesResponse.data)) {
+          setStatuses(statusesResponse.data);
+        }
+
         // Fetch critical priority issues
         const criticalResponse = await api.get('/issues/lecturer/', {
           params: {
@@ -78,6 +94,7 @@ function LecturerDashboard() {
         });
 
         // Fetch assigned issues (last 5)
+        console.log('Fetching assigned issues...');
         const assignedResponse = await api.get('/issues/lecturer/', {
           params: { 
             assigned: true,
@@ -86,7 +103,54 @@ function LecturerDashboard() {
           }
         });
 
+        console.log('Raw assigned issues response:', assignedResponse);
+        console.log('Response status:', assignedResponse.status);
+        console.log('Response headers:', assignedResponse.headers);
+        console.log('Response data:', assignedResponse.data);
+        console.log('Response data type:', typeof assignedResponse.data);
+        console.log('Response data keys:', Object.keys(assignedResponse.data || {}));
+        console.log('Response results:', assignedResponse.data?.results);
+        console.log('Response results type:', typeof assignedResponse.data?.results);
+        console.log('Response results length:', assignedResponse.data?.results?.length);
+
+        // Transform assigned issues to match the table format
+        let transformedAssignedIssues = [];
+        if (Array.isArray(assignedResponse.data?.results)) {
+          transformedAssignedIssues = assignedResponse.data.results.map(issue => {
+            console.log('Processing issue:', issue);
+            return {
+              issue_id: issue.issue_id,
+              title: issue.title,
+              reporter_details: issue.reporter_details,
+              category_name: issue.category_name,
+              priority_name: issue.priority_name,
+              status_name: issue.status_name,
+              created_at: issue.created_at,
+              due_date: issue.due_date
+            };
+          });
+        } else if (Array.isArray(assignedResponse.data)) {
+          transformedAssignedIssues = assignedResponse.data.map(issue => {
+            console.log('Processing issue (direct array):', issue);
+            return {
+              issue_id: issue.issue_id,
+              title: issue.title,
+              reporter_details: issue.reporter_details,
+              category_name: issue.category_name,
+              priority_name: issue.priority_name,
+              status_name: issue.status_name,
+              created_at: issue.created_at,
+              due_date: issue.due_date
+            };
+          });
+        }
+
+        console.log('Final transformed assigned issues:', transformedAssignedIssues);
+        console.log('Transformed issues length:', transformedAssignedIssues.length);
+        setAssignedIssues(transformedAssignedIssues);
+
         // Fetch resolved issues
+        console.log('Fetching resolved issues...');
         const resolvedResponse = await api.get('/issues/lecturer/', {
           params: { 
             resolved: true,
@@ -95,29 +159,50 @@ function LecturerDashboard() {
           }
         });
 
-        // Transform assigned issues to match the table format
-        const transformedAssignedIssues = (assignedResponse.data?.results || []).map(issue => ({
-          issue_id: issue.issue_id,
-          title: issue.title,
-          reporter_details: issue.reporter_details,
-          category_name: issue.category_name,
-          priority_name: issue.priority_name,
-          status_name: issue.status_name,
-          created_at: issue.created_at,
-          due_date: issue.due_date
-        }));
+        console.log('Raw resolved issues response:', resolvedResponse);
+        console.log('Response status:', resolvedResponse.status);
+        console.log('Response headers:', resolvedResponse.headers);
+        console.log('Response data:', resolvedResponse.data);
+        console.log('Response data type:', typeof resolvedResponse.data);
+        console.log('Response data keys:', Object.keys(resolvedResponse.data || {}));
+        console.log('Response results:', resolvedResponse.data?.results);
+        console.log('Response results type:', typeof resolvedResponse.data?.results);
+        console.log('Response results length:', resolvedResponse.data?.results?.length);
 
         // Transform resolved issues to match the table format
-        const transformedResolvedIssues = (resolvedResponse.data?.results || []).map(issue => ({
-          issue_id: issue.issue_id,
-          title: issue.title,
-          reporter_details: issue.reporter_details,
-          category_name: issue.category_name,
-          priority_name: issue.priority_name,
-          status_name: issue.status_name,
-          created_at: issue.created_at,
-          resolved_at: issue.resolved_at
-        }));
+        let transformedResolvedIssues = [];
+        if (Array.isArray(resolvedResponse.data?.results)) {
+          transformedResolvedIssues = resolvedResponse.data.results.map(issue => {
+            console.log('Processing resolved issue:', issue);
+            return {
+              issue_id: issue.issue_id,
+              title: issue.title,
+              reporter_details: issue.reporter_details,
+              category_name: issue.category_name,
+              priority_name: issue.priority_name,
+              status_name: issue.status_name,
+              created_at: issue.created_at,
+              resolved_at: issue.resolved_at
+            };
+          });
+        } else if (Array.isArray(resolvedResponse.data)) {
+          transformedResolvedIssues = resolvedResponse.data.map(issue => {
+            console.log('Processing resolved issue (direct array):', issue);
+            return {
+              issue_id: issue.issue_id,
+              title: issue.title,
+              reporter_details: issue.reporter_details,
+              category_name: issue.category_name,
+              priority_name: issue.priority_name,
+              status_name: issue.status_name,
+              created_at: issue.created_at,
+              resolved_at: issue.resolved_at
+            };
+          });
+        }
+
+        console.log('Final transformed resolved issues:', transformedResolvedIssues);
+        console.log('Transformed resolved issues length:', transformedResolvedIssues.length);
 
         setIssues({
           assigned: transformedAssignedIssues,
@@ -125,10 +210,12 @@ function LecturerDashboard() {
         });
 
         setLoading(false);
+        setAssignedLoading(false);
       } catch (error) {
         console.error('Error fetching data:', error);
         console.error('Error response:', error.response?.data);
-        setLoading(false);
+        console.error('Error status:', error.response?.status);
+        
         // Set default values in case of error
         setCriticalPriorityIssues([]);
         setStats({
@@ -141,6 +228,9 @@ function LecturerDashboard() {
           assigned: [],
           resolved: []
         });
+        setAssignedIssues([]);
+        setLoading(false);
+        setAssignedLoading(false);
       }
     };
 
@@ -189,28 +279,6 @@ function LecturerDashboard() {
     );
   };
 
-  const getFilteredIssues = () => {
-    let filteredIssues = issues[activeTab];
-
-    if (selectedCategory !== 'All Categories') {
-      filteredIssues = filteredIssues.filter(issue => issue.category === selectedCategory);
-    }
-
-    if (selectedStatus !== 'All Status') {
-      filteredIssues = filteredIssues.filter(issue => issue.status === selectedStatus);
-    }
-
-    if (searchTerm) {
-      filteredIssues = filteredIssues.filter(issue =>
-        issue.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        issue.student?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        issue.issue_id?.toString().includes(searchTerm)
-      );
-    }
-
-    return filteredIssues;
-  };
-
   const getStatusColor = (status) => {
     switch (status.toLowerCase()) {
       case 'open':
@@ -243,6 +311,24 @@ function LecturerDashboard() {
     setSelectedTimeRange(e.target.value);
   };
 
+  // Filter issues based on selected category and status
+  const filteredIssues = {
+    assigned: issues.assigned.filter(issue => {
+      const matchesCategory = selectedCategory === 'all' || 
+        (issue.category_name && issue.category_name.toLowerCase() === selectedCategory.toLowerCase());
+      const matchesStatus = selectedStatus === 'all' || 
+        (issue.status_name && issue.status_name.toLowerCase() === selectedStatus.toLowerCase());
+      return matchesCategory && matchesStatus;
+    }),
+    resolved: issues.resolved.filter(issue => {
+      const matchesCategory = selectedCategory === 'all' || 
+        (issue.category_name && issue.category_name.toLowerCase() === selectedCategory.toLowerCase());
+      const matchesStatus = selectedStatus === 'all' || 
+        (issue.status_name && issue.status_name.toLowerCase() === selectedStatus.toLowerCase());
+      return matchesCategory && matchesStatus;
+    })
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -269,6 +355,7 @@ function LecturerDashboard() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          {/* Create New Issue button temporarily disabled
           <Link
             to="/lecturer/issues/create"
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
@@ -276,6 +363,7 @@ function LecturerDashboard() {
             <PlusIcon className="h-5 w-5 mr-2" />
             Create New Issue
           </Link>
+          */}
         </div>
       </div>
 
@@ -462,7 +550,7 @@ function LecturerDashboard() {
               }`}
               onClick={() => setActiveTab('assigned')}
             >
-              My Assigned Issues ({issues.assigned.length})
+              My Assigned Issues ({filteredIssues.assigned.length})
             </button>
             <button
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
@@ -472,7 +560,7 @@ function LecturerDashboard() {
               }`}
               onClick={() => setActiveTab('resolved')}
             >
-              Recently Resolved ({issues.resolved.length})
+              Recently Resolved ({filteredIssues.resolved.length})
             </button>
           </div>
         </div>
@@ -489,89 +577,159 @@ function LecturerDashboard() {
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
               >
-                <option>All Categories</option>
-                <option>Course Registration</option>
-                <option>Technical Support</option>
-                <option>Academic Advising</option>
-                <option>Grading</option>
-                <option>Facilities</option>
+                <option value="all">All Categories</option>
+                {categories.map(category => (
+                  <option key={category.category_id} value={category.name}>
+                    {category.name}
+                  </option>
+                ))}
               </select>
               <select 
                 className="text-sm border-gray-300 rounded-md"
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
               >
-                <option>All Status</option>
-                <option>Open</option>
-                <option>In Progress</option>
-                <option>Resolved</option>
+                <option value="all">All Status</option>
+                {statuses.map(status => (
+                  <option key={status.id} value={status.name}>
+                    {status.name}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
 
-          {/* Table */}
-          <div className="bg-white shadow-sm rounded-lg border border-gray-200">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead>
-                <tr className="bg-gray-50">
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">#ID</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reporter</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Priority</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {getFilteredIssues().map((issue) => (
-                  <tr 
-                    key={issue.issue_id} 
-                    className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() => handleIssueClick(issue.issue_id)}
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">#{issue.issue_id}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{issue.title}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {issue.reporter_details?.full_name || 'Unknown'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {issue.category_name || issue.category?.name || 'Uncategorized'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(issue.priority_name || issue.priority?.name)}`}>
-                        {issue.priority_name || issue.priority?.name || 'Medium'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(issue.status_name || issue.status?.name)}`}>
-                        {issue.status_name || issue.status?.name || 'Open'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(issue.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="relative">
-                        <button 
-                          className="text-gray-400 hover:text-gray-500"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleIssueClick(issue.issue_id);
-                          }}
-                        >
-                          <EllipsisHorizontalIcon className="h-5 w-5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {/* My Assigned Issues Tab */}
+          {activeTab === 'assigned' && (
+            <div className="bg-white shadow-sm rounded-lg border border-gray-200">
+              <div className="p-6">
+                {assignedLoading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  </div>
+                ) : filteredIssues.assigned.length === 0 ? (
+                  <div className="text-center py-4 text-gray-500">
+                    No assigned issues found
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead>
+                        <tr className="bg-gray-50">
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">#ID</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reporter</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Priority</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Due Date</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {filteredIssues.assigned.map((issue) => (
+                          <tr 
+                            key={issue.issue_id}
+                            onClick={() => handleIssueClick(issue.issue_id)}
+                            className="hover:bg-gray-50 cursor-pointer"
+                          >
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">#{issue.issue_id}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{issue.title}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {issue.reporter_details?.full_name || 'Unknown'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{issue.category_name}</td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPriorityColor(issue.priority_name)}`}>
+                                {issue.priority_name}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(issue.status_name)}`}>
+                                {issue.status_name}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {calculateDaysAgo(issue.created_at)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {issue.due_date ? calculateTimeLeft(issue.due_date) : 'No due date'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Recently Resolved Issues Tab */}
+          {activeTab === 'resolved' && (
+            <div className="bg-white shadow-sm rounded-lg border border-gray-200">
+              <div className="p-6">
+                {loading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  </div>
+                ) : filteredIssues.resolved.length === 0 ? (
+                  <div className="text-center py-4 text-gray-500">
+                    No resolved issues found
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead>
+                        <tr className="bg-gray-50">
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">#ID</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reporter</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Priority</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Resolved</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {filteredIssues.resolved.map((issue) => (
+                          <tr 
+                            key={issue.issue_id}
+                            onClick={() => handleIssueClick(issue.issue_id)}
+                            className="hover:bg-gray-50 cursor-pointer"
+                          >
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">#{issue.issue_id}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{issue.title}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {issue.reporter_details?.full_name || 'Unknown'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{issue.category_name}</td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPriorityColor(issue.priority_name)}`}>
+                                {issue.priority_name}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(issue.status_name)}`}>
+                                {issue.status_name}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {calculateDaysAgo(issue.created_at)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {calculateDaysAgo(issue.resolved_at)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
