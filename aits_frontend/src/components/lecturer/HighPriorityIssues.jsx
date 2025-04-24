@@ -2,11 +2,11 @@ import React from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCalendarAlt, faUser, faComment, faChevronRight } from '@fortawesome/free-solid-svg-icons'
 
-const HighPriorityIssues = ({ issues, onViewIssue }) => {
+const CriticalPriorityIssues = ({ issues, onViewIssue }) => {
   return (
     <div className="dashboard-panel">
       <div className="panel-header">
-        <h2>High Priority Issues</h2>
+        <h2>Critical Priority Issues</h2>
         <a href="#" style={{ fontSize: '0.8rem', color: 'var(--lecturer-primary-color)' }}>View All</a>
       </div>
       <div className="panel-content">
@@ -27,7 +27,7 @@ const HighPriorityIssues = ({ issues, onViewIssue }) => {
                 marginRight: '15px'
               }}></div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 400, marginBottom: '5px' }}>{issue.title}</div>
+                <div style={{ fontWeight: 500, marginBottom: '5px' }}>{issue.title}</div>
                 <div style={{ fontSize: '0.8rem', color: '#7f8c8d', display: 'flex' }}>
                   <span style={{ marginRight: '10px' }}>
                     <FontAwesomeIcon icon={faCalendarAlt} /> {issue.date}
@@ -65,4 +65,4 @@ const HighPriorityIssues = ({ issues, onViewIssue }) => {
   )
 }
 
-export default HighPriorityIssues
+export default CriticalPriorityIssues

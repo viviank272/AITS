@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   FolderIcon,
   PlusIcon,
@@ -7,37 +7,14 @@ import {
   TrashIcon,
   XMarkIcon
 } from '@heroicons/react/24/outline';
+import { getCategories, createCategory, updateCategory, deleteCategory } from '../../services/api';
 
 function Categories() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [categories, setCategories] = useState([
-    {
-      id: 1,
-      name: 'Academic Issues',
-      description: 'Issues related to academic matters',
-      parentId: null,
-      isActive: true,
-      issueCount: 25
-    },
-    {
-      id: 2,
-      name: 'Technical Support',
-      description: 'IT and technical related issues',
-      parentId: null,
-      isActive: true,
-      issueCount: 15
-    },
-    {
-      id: 3,
-      name: 'Administrative',
-      description: 'Administrative and bureaucratic issues',
-      parentId: null,
-      isActive: true,
-      issueCount: 10
-    }
-  ]);
-
+  const [error, setError] = useState(null);
+  const [categories, setCategories] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -45,44 +22,55 @@ function Categories() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    parentId: null,
-    isActive: true
+    is_active: true
   });
 
-  useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
+  const fetchCategories = async () => {
+    setLoading(true);
+    try {
+      const data = await getCategories();
+      setCategories(data);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching categories:', err);
+      setError('Failed to load categories. Please try again.');
       
-      // Check URL parameters for actions
-      const searchParams = new URLSearchParams(location.search);
-      const action = searchParams.get('action');
-      
-      if (action === 'manage') {
-        // Focus on the category management
-        // Could automatically open the add category modal if desired
-        // setShowModal(true);
-        document.querySelector('button[data-testid="add-category-btn"]')?.focus();
+      // Handle unauthorized error
+      if (err.message === 'Unauthorized') {
+        navigate('/login', { state: { from: '/admin/categories' } });
       }
-    }, 1000);
-  }, [location]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategories();
+    
+    // Check URL parameters for actions
+    const searchParams = new URLSearchParams(location.search);
+    const action = searchParams.get('action');
+    
+    if (action === 'manage') {
+      // Focus on the category management
+      document.querySelector('button[data-testid="add-category-btn"]')?.focus();
+    }
+  }, [location, navigate]);
 
   const handleOpenModal = (category = null) => {
     if (category) {
       setEditingCategory(category);
       setFormData({
         name: category.name,
-        description: category.description,
-        parentId: category.parentId,
-        isActive: category.isActive
+        description: category.description || '',
+        is_active: category.is_active
       });
     } else {
       setEditingCategory(null);
       setFormData({
         name: '',
         description: '',
-        parentId: null,
-        isActive: true
+        is_active: true
       });
     }
     setShowModal(true);
@@ -94,32 +82,41 @@ function Categories() {
     setFormData({
       name: '',
       description: '',
-      parentId: null,
-      isActive: true
+      is_active: true
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (editingCategory) {
-      // Update existing category
-      setCategories(categories.map(category =>
-        category.id === editingCategory.id
-          ? { ...category, ...formData }
-          : category
-      ));
-    } else {
-      // Add new category
-      setCategories([
-        ...categories,
-        {
-          id: categories.length + 1,
-          ...formData,
-          issueCount: 0
-        }
-      ]);
+    
+    try {
+      if (editingCategory) {
+        // Update existing category
+        const updatedCategory = await updateCategory(editingCategory.category_id, formData);
+        setCategories(categories.map(category =>
+          category.category_id === editingCategory.category_id
+            ? updatedCategory
+            : category
+        ));
+      } else {
+        // Add new category
+        const newCategory = await createCategory(formData);
+        setCategories([...categories, newCategory]);
+      }
+      handleCloseModal();
+    } catch (err) {
+      console.error('Error saving category:', err);
+      // Display error message
+      if (err.response?.data) {
+        // Format validation errors
+        const validationErrors = Object.entries(err.response.data)
+          .map(([field, errors]) => `${field}: ${errors.join(', ')}`)
+          .join('\n');
+        alert(`Error: ${validationErrors}`);
+      } else {
+        alert(`Error: ${err.message || 'Failed to save category'}`);
+      }
     }
-    handleCloseModal();
   };
 
   const handleDeleteClick = (category) => {
@@ -127,11 +124,22 @@ function Categories() {
     setShowDeleteConfirm(true);
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (categoryToDelete) {
-      setCategories(categories.filter(category => category.id !== categoryToDelete.id));
-      setShowDeleteConfirm(false);
-      setCategoryToDelete(null);
+      try {
+        await deleteCategory(categoryToDelete.category_id);
+        setCategories(categories.filter(category => category.category_id !== categoryToDelete.category_id));
+        setShowDeleteConfirm(false);
+        setCategoryToDelete(null);
+      } catch (err) {
+        console.error('Error deleting category:', err);
+        // Display error message
+        if (err.response?.data?.error) {
+          alert(`Error: ${err.response.data.error}`);
+        } else {
+          alert(`Error: ${err.message || 'Failed to delete category'}`);
+        }
+      }
     }
   };
 
@@ -144,6 +152,23 @@ function Categories() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <strong className="font-bold">Error:</strong>
+          <span className="block sm:inline"> {error}</span>
+          <button 
+            className="mt-4 bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+            onClick={fetchCategories}
+          >
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }
@@ -167,50 +192,60 @@ function Categories() {
       </div>
 
         <div className="mt-8">
-          <div className="bg-white shadow overflow-hidden sm:rounded-md">
-            <ul className="divide-y divide-gray-200">
-              {categories.map(category => (
-                <li key={category.id}>
-                  <div className="px-4 py-4 sm:px-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-medium text-gray-900 truncate">
-                          {category.name}
-                        </h3>
-                        <p className="mt-1 text-sm text-gray-500">
-                          {category.description}
-                        </p>
-                        <div className="mt-2 flex items-center">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            category.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                          }`}>
-                            {category.isActive ? 'Active' : 'Inactive'}
-                          </span>
-                          <span className="ml-2 text-sm text-gray-500">
-                            {category.issueCount} issues
-                          </span>
+          {categories.length === 0 ? (
+            <div className="text-center py-10 bg-white shadow sm:rounded-md">
+              <p className="text-gray-500">No categories found</p>
+              <button
+                onClick={() => handleOpenModal()}
+                className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+              >
+                <PlusIcon className="h-5 w-5 mr-2" />
+                Create Your First Category
+              </button>
+            </div>
+          ) : (
+            <div className="bg-white shadow overflow-hidden sm:rounded-md">
+              <ul className="divide-y divide-gray-200">
+                {categories.map(category => (
+                  <li key={category.category_id}>
+                    <div className="px-4 py-4 sm:px-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-lg font-medium text-gray-900 truncate">
+                            {category.name}
+                          </h3>
+                          <p className="mt-1 text-sm text-gray-500">
+                            {category.description || 'No description provided'}
+                          </p>
+                          <div className="mt-2 flex items-center">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              category.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                            }`}>
+                              {category.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="ml-4 flex-shrink-0 flex space-x-2">
+                          <button
+                            onClick={() => handleOpenModal(category)}
+                            className="text-blue-600 hover:text-blue-900"
+                          >
+                            <PencilIcon className="h-5 w-5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteClick(category)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            <TrashIcon className="h-5 w-5" />
+                          </button>
                         </div>
                       </div>
-                      <div className="ml-4 flex-shrink-0 flex space-x-2">
-                        <button
-                          onClick={() => handleOpenModal(category)}
-                          className="text-blue-600 hover:text-blue-900"
-                        >
-                          <PencilIcon className="h-5 w-5" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteClick(category)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          <TrashIcon className="h-5 w-5" />
-                        </button>
-                      </div>
                     </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
 
         {/* Category Modal */}
@@ -236,8 +271,8 @@ function Categories() {
                             <label htmlFor="name" className="block text-sm font-medium text-gray-700">
                               Category Name
                             </label>
-          <input
-            type="text"
+                            <input
+                              type="text"
                               id="name"
                               value={formData.name}
                               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -251,40 +286,21 @@ function Categories() {
                             </label>
                             <textarea
                               id="description"
-                              rows={3}
                               value={formData.description}
                               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                              required
-          />
-        </div>
-                          <div>
-                            <label htmlFor="parentId" className="block text-sm font-medium text-gray-700">
-                              Parent Category
-                            </label>
-        <select
-                              id="parentId"
-                              value={formData.parentId || ''}
-                              onChange={(e) => setFormData({ ...formData, parentId: e.target.value || null })}
-                              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                            >
-                              <option value="">None</option>
-                              {categories.map(category => (
-                                <option key={category.id} value={category.id}>
-                                  {category.name}
-                                </option>
-                              ))}
-        </select>
-      </div>
+                              rows="3"
+                            />
+                          </div>
                           <div className="flex items-center">
                             <input
-                              type="checkbox"
                               id="isActive"
-                              checked={formData.isActive}
-                              onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                              type="checkbox"
+                              checked={formData.is_active}
+                              onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                             />
-                            <label htmlFor="isActive" className="ml-2 block text-sm text-gray-900">
+                            <label htmlFor="isActive" className="ml-2 block text-sm font-medium text-gray-700">
                               Active
                             </label>
                           </div>
@@ -297,7 +313,7 @@ function Categories() {
                       type="submit"
                       className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
                     >
-                      {editingCategory ? 'Update Category' : 'Create Category'}
+                      {editingCategory ? 'Update' : 'Add'}
                     </button>
                     <button
                       type="button"
@@ -327,7 +343,7 @@ function Categories() {
                 <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                   <div className="sm:flex sm:items-start">
                     <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
-                      <TrashIcon className="h-6 w-6 text-red-600" />
+                      <XMarkIcon className="h-6 w-6 text-red-600" />
                     </div>
                     <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
                       <h3 className="text-lg leading-6 font-medium text-gray-900">
@@ -335,27 +351,27 @@ function Categories() {
                       </h3>
                       <div className="mt-2">
                         <p className="text-sm text-gray-500">
-                          Are you sure you want to delete the category "{categoryToDelete?.name}"? This action cannot be undone.
+                          Are you sure you want to delete "{categoryToDelete?.name}"? This action cannot be undone.
                         </p>
                       </div>
                     </div>
                   </div>
                 </div>
                 <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                <button
+                  <button
                     type="button"
                     onClick={handleDeleteConfirm}
                     className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm"
-                >
+                  >
                     Delete
-                </button>
-                <button
+                  </button>
+                  <button
                     type="button"
                     onClick={handleDeleteCancel}
                     className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                >
+                  >
                     Cancel
-                </button>
+                  </button>
                 </div>
               </div>
             </div>

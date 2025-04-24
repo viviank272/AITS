@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faPlus,
@@ -11,76 +11,88 @@ import {
   faUserTie,
   faUserGraduate,
   faCheck,
-  faTimes
+  faTimes,
+  faExclamationTriangle
 } from '@fortawesome/free-solid-svg-icons';
+import { getRoles, createRole, updateRole, deleteRole } from '../../services/api';
+import { useNavigate } from 'react-router-dom';
 import '../../utils/fontawesome';
 
 const Roles = () => {
-  const [roles, setRoles] = useState([
-    {
-      id: 1,
-      name: 'Administrator',
-      description: 'Full system access with all permissions',
-      permissions: {
-        users: { view: true, create: true, edit: true, delete: true },
-        colleges: { view: true, create: true, edit: true, delete: true },
-        programs: { view: true, create: true, edit: true, delete: true },
-        students: { view: true, create: true, edit: true, delete: true },
-        issues: { view: true, create: true, edit: true, delete: true },
-        categories: { view: true, create: true, edit: true, delete: true },
-        reports: { view: true, create: true, edit: true, delete: true },
-        settings: { view: true, create: true, edit: true, delete: true },
-        roles: { view: true, create: true, edit: true, delete: true },
-        auditLogs: { view: true, create: true, edit: true, delete: true }
-      },
-      status: 'active',
-      userCount: 5
-    },
-    {
-      id: 2,
-      name: 'Lecturer',
-      description: 'Access to assigned issues and department management',
-      permissions: {
-        users: { view: false, create: false, edit: false, delete: false },
-        colleges: { view: true, create: false, edit: false, delete: false },
-        programs: { view: true, create: false, edit: false, delete: false },
-        students: { view: true, create: false, edit: false, delete: false },
-        issues: { view: true, create: true, edit: true, delete: false },
-        categories: { view: true, create: false, edit: false, delete: false },
-        reports: { view: true, create: false, edit: false, delete: false },
-        settings: { view: false, create: false, edit: false, delete: false },
-        roles: { view: false, create: false, edit: false, delete: false },
-        auditLogs: { view: false, create: false, edit: false, delete: false }
-      },
-      status: 'active',
-      userCount: 25
-    },
-    {
-      id: 3,
-      name: 'Student',
-      description: 'Basic access to create and view own issues',
-      permissions: {
-        users: { view: false, create: false, edit: false, delete: false },
-        colleges: { view: true, create: false, edit: false, delete: false },
-        programs: { view: true, create: false, edit: false, delete: false },
-        students: { view: false, create: false, edit: false, delete: false },
-        issues: { view: true, create: true, edit: false, delete: false },
-        categories: { view: true, create: false, edit: false, delete: false },
-        reports: { view: false, create: false, edit: false, delete: false },
-        settings: { view: false, create: false, edit: false, delete: false },
-        roles: { view: false, create: false, edit: false, delete: false },
-        auditLogs: { view: false, create: false, edit: false, delete: false }
-      },
-      status: 'active',
-      userCount: 150
-    }
-  ]);
-
+  const navigate = useNavigate();
+  const [roles, setRoles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [showForm, setShowForm] = useState(false);
   const [editingRole, setEditingRole] = useState(null);
   const [editingPermissions, setEditingPermissions] = useState({});
+
+  useEffect(() => {
+    fetchRoles();
+  }, []);
+
+  const fetchRoles = async () => {
+    setLoading(true);
+    try {
+      const data = await getRoles();
+      
+      // Ensure permissions are correctly structured
+      const rolesWithFormattedPermissions = data.map(role => {
+        // If permissions is a string, try to parse it
+        let permissions = role.permissions;
+        if (typeof permissions === 'string') {
+          try {
+            permissions = JSON.parse(permissions);
+          } catch (error) {
+            console.error('Error parsing permissions:', error);
+            permissions = {};
+          }
+        }
+        
+        // Ensure all required permission modules exist
+        const defaultPermissions = {
+          users: { view: false, create: false, edit: false, delete: false },
+          colleges: { view: false, create: false, edit: false, delete: false },
+          programs: { view: false, create: false, edit: false, delete: false },
+          students: { view: false, create: false, edit: false, delete: false },
+          issues: { view: false, create: false, edit: false, delete: false },
+          categories: { view: false, create: false, edit: false, delete: false },
+          reports: { view: false, create: false, edit: false, delete: false },
+          settings: { view: false, create: false, edit: false, delete: false },
+          roles: { view: false, create: false, edit: false, delete: false },
+          auditLogs: { view: false, create: false, edit: false, delete: false }
+        };
+        
+        // Merge existing permissions with default structure
+        for (const [key, value] of Object.entries(permissions)) {
+          if (defaultPermissions[key]) {
+            defaultPermissions[key] = { ...defaultPermissions[key], ...value };
+          }
+        }
+        
+        return {
+          ...role,
+          permissions: defaultPermissions,
+          status: role.is_active !== undefined ? (role.is_active ? 'active' : 'inactive') : 'active'
+        };
+      });
+      
+      setRoles(rolesWithFormattedPermissions);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching roles:', err);
+      setError('Failed to load roles. Please try again.');
+      
+      // Handle unauthorized error
+      if (err.message === 'Unauthorized') {
+        navigate('/login', { state: { from: '/admin/roles' } });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
@@ -109,18 +121,41 @@ const Roles = () => {
     setShowForm(true);
   };
 
-  const handleDeleteRole = (id) => {
+  const handleDeleteRole = async (id) => {
     if (window.confirm('Are you sure you want to delete this role?')) {
-      setRoles(roles.filter(role => role.id !== id));
+      try {
+        await deleteRole(id);
+        setRoles(roles.filter(role => role.role_id !== id));
+      } catch (err) {
+        console.error('Error deleting role:', err);
+        if (err.response?.data?.error) {
+          alert(`Error: ${err.response.data.error}`);
+        } else {
+          alert(`Error: ${err.message || 'Failed to delete role'}`);
+        }
+      }
     }
   };
 
-  const handleToggleStatus = (id) => {
-    setRoles(roles.map(role =>
-      role.id === id
-        ? { ...role, status: role.status === 'active' ? 'inactive' : 'active' }
-        : role
-    ));
+  const handleToggleStatus = async (role) => {
+    try {
+      const updatedRole = await updateRole(role.role_id, {
+        ...role,
+        is_active: role.status === 'active' ? false : true,
+        permissions: role.permissions
+      });
+      
+      setRoles(roles.map(r =>
+        r.role_id === role.role_id ? {
+          ...updatedRole,
+          status: updatedRole.is_active ? 'active' : 'inactive',
+          permissions: role.permissions // Preserve formatted permissions
+        } : r
+      ));
+    } catch (err) {
+      console.error('Error updating role status:', err);
+      alert(`Error updating role status: ${err.message || 'Unknown error'}`);
+    }
   };
 
   const handlePermissionChange = (module, action) => {
@@ -133,50 +168,94 @@ const Roles = () => {
     }));
   };
 
-  const handleSaveRole = (e) => {
+  const handleSaveRole = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
+    
     const roleData = {
-      id: editingRole?.id || roles.length + 1,
-      name: formData.get('name'),
-      description: formData.get('name'), // Using name as description for simplicity
+      role_name: formData.get('name'),
+      description: formData.get('description') || formData.get('name'), // Fallback to name if description is empty
       permissions: editingPermissions,
-      status: formData.get('status'),
-      userCount: editingRole?.userCount || 0
+      is_active: formData.get('status') === 'active'
     };
 
-    if (editingRole) {
-      setRoles(roles.map(role =>
-        role.id === editingRole.id ? roleData : role
-      ));
-    } else {
-      setRoles([...roles, roleData]);
+    try {
+      if (editingRole) {
+        // Update existing role
+        const updatedRole = await updateRole(editingRole.role_id, roleData);
+        setRoles(roles.map(role =>
+          role.role_id === editingRole.role_id ? {
+            ...updatedRole,
+            status: updatedRole.is_active ? 'active' : 'inactive',
+            permissions: editingPermissions // Use our formatted permissions
+          } : role
+        ));
+      } else {
+        // Create new role
+        const newRole = await createRole(roleData);
+        setRoles([...roles, {
+          ...newRole,
+          status: newRole.is_active ? 'active' : 'inactive',
+          permissions: editingPermissions
+        }]);
+      }
+      
+      setShowForm(false);
+      setEditingRole(null);
+    } catch (err) {
+      console.error('Error saving role:', err);
+      alert(`Error saving role: ${err.message || 'Unknown error'}`);
     }
-
-    setShowForm(false);
-    setEditingRole(null);
   };
 
   const filteredRoles = roles.filter(role => {
     const matchesSearch = 
-      role.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      role.description.toLowerCase().includes(searchTerm.toLowerCase());
+      role.role_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      role.description?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === 'all' || role.status === filterStatus;
     return matchesSearch && matchesStatus;
   });
 
   const getRoleIcon = (name) => {
-    switch (name.toLowerCase()) {
-      case 'administrator':
-        return faUserShield;
-      case 'lecturer':
-        return faUserTie;
-      case 'student':
-        return faUserGraduate;
-      default:
-        return faUserShield;
+    const lowerName = name?.toLowerCase() || '';
+    if (lowerName.includes('admin')) {
+      return faUserShield;
+    } else if (lowerName.includes('lecturer') || lowerName.includes('staff')) {
+      return faUserTie;
+    } else if (lowerName.includes('student')) {
+      return faUserGraduate;
+    } else {
+      return faUserShield;
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <div className="flex items-center">
+            <FontAwesomeIcon icon={faExclamationTriangle} className="text-xl mr-2" />
+            <strong className="font-bold">Error:</strong>
+            <span className="block sm:inline ml-2"> {error}</span>
+          </div>
+          <button 
+            className="mt-4 bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+            onClick={fetchRoles}
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">
@@ -218,9 +297,111 @@ const Roles = () => {
         </select>
       </div>
 
+      {/* Role Cards */}
+      {filteredRoles.length === 0 ? (
+        <div className="text-center py-10 bg-gray-50 rounded-lg">
+          <p className="text-gray-500 mb-2">No roles found</p>
+          <button 
+            onClick={handleAddRole}
+            className="px-4 py-2 bg-[#1e1e77] text-white rounded-lg"
+          >
+            Create your first role
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredRoles.map((role) => (
+            <div
+              key={role.role_id}
+              className="bg-white p-6 rounded-lg shadow-md border border-gray-200"
+            >
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center">
+                  <div className="bg-[#eaeafc] p-3 rounded-full mr-3">
+                    <FontAwesomeIcon
+                      icon={getRoleIcon(role.role_name)}
+                      className="text-[#1e1e77]"
+                    />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg">{role.role_name}</h3>
+                    <p className="text-sm text-gray-500">{role.description}</p>
+                  </div>
+                </div>
+                <div>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    role.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}>
+                    {role.status === 'active' ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <div className="flex justify-between text-sm text-gray-500 mb-1">
+                  <span>Users</span>
+                  <span>{role.user_count || 0}</span>
+                </div>
+                <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                  <div
+                    className="bg-[#1e1e77] h-2"
+                    style={{ width: `${Math.min(100, (role.user_count || 0) / 2)}%` }}
+                  ></div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                {Object.entries(role.permissions).slice(0, 4).map(([module, perms]) => (
+                  <div key={module} className="bg-gray-50 p-2 rounded text-sm">
+                    <span className="font-medium capitalize">{module}</span>
+                    <div className="flex items-center mt-1">
+                      <FontAwesomeIcon
+                        icon={perms.view ? faCheck : faTimes}
+                        className={`w-3 h-3 ${perms.view ? 'text-green-500' : 'text-red-500'}`}
+                      />
+                      <span className="ml-1 text-xs text-gray-500">View</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-between">
+                <button
+                  onClick={() => handleToggleStatus(role)}
+                  className={`p-2 rounded-md ${
+                    role.status === 'active'
+                      ? 'text-green-600 hover:bg-green-50'
+                      : 'text-red-600 hover:bg-red-50'
+                  }`}
+                >
+                  <FontAwesomeIcon
+                    icon={role.status === 'active' ? faToggleOn : faToggleOff}
+                    className="text-xl"
+                  />
+                </button>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => handleEditRole(role)}
+                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-md"
+                  >
+                    <FontAwesomeIcon icon={faEdit} />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteRole(role.role_id)}
+                    className="p-2 text-red-600 hover:bg-red-50 rounded-md"
+                  >
+                    <FontAwesomeIcon icon={faTrash} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Role Form */}
       {showForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 w-[95%] max-w-6xl">
             <h2 className="text-xl font-semibold mb-4">
               {editingRole ? 'Edit Role' : 'Add New Role'}
@@ -233,7 +414,7 @@ const Roles = () => {
                     <input
                       type="text"
                       name="name"
-                      defaultValue={editingRole?.name}
+                      defaultValue={editingRole?.role_name}
                       className="mt-1 block w-full border rounded-lg px-3 py-2"
                       required
                     />
@@ -252,39 +433,70 @@ const Roles = () => {
                   </div>
                 </div>
 
-                {/* Permissions Grid */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Permissions</label>
-                  <div className="grid grid-cols-5 gap-3">
-                    {Object.entries(editingPermissions).map(([module, permissions]) => (
-                      <div key={module} className="border rounded-lg p-3">
-                        <h3 className="font-medium capitalize mb-2 text-sm">{module}</h3>
-                        <div className="space-y-1.5">
-                          {Object.entries(permissions).map(([action, enabled]) => (
-                            <label key={action} className="flex items-center">
-                              <input
-                                type="checkbox"
-                                checked={enabled}
-                                onChange={() => handlePermissionChange(module, action)}
-                                className="rounded border-gray-300 text-[#1e1e77] focus:ring-[#1e1e77]"
-                              />
-                              <span className="ml-2 text-sm capitalize">{action}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
+                  <label className="block text-sm font-medium text-gray-700">Description</label>
+                  <textarea
+                    name="description"
+                    defaultValue={editingRole?.description}
+                    className="mt-1 block w-full border rounded-lg px-3 py-2"
+                    rows="2"
+                  ></textarea>
+                </div>
+
+                <div>
+                  <h3 className="text-md font-medium text-gray-700 mb-2">Permissions</h3>
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Module
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            View
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Create
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Edit
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Delete
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {Object.entries(editingPermissions).map(([module, permissions]) => (
+                          <tr key={module}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 capitalize">
+                              {module}
+                            </td>
+                            {['view', 'create', 'edit', 'delete'].map((action) => (
+                              <td key={action} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <div className="flex items-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={permissions[action]}
+                                    onChange={() => handlePermissionChange(module, action)}
+                                    className="h-4 w-4 text-[#1e1e77] focus:ring-[#1e1e77] border-gray-300 rounded"
+                                  />
+                                </div>
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>
-              <div className="mt-6 flex justify-end gap-3">
+
+              <div className="mt-6 flex justify-end space-x-3">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowForm(false);
-                    setEditingRole(null);
-                  }}
-                  className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+                  onClick={() => setShowForm(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
                 >
                   Cancel
                 </button>
@@ -292,88 +504,13 @@ const Roles = () => {
                   type="submit"
                   className="px-4 py-2 bg-[#1e1e77] text-white rounded-lg hover:bg-[#2a2a8f]"
                 >
-                  Save
+                  {editingRole ? 'Update' : 'Create'}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
-
-      {/* Roles Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredRoles.map(role => (
-          <div
-            key={role.id}
-            className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow"
-          >
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center">
-                <div className="p-3 rounded-lg bg-purple-100 text-purple-800">
-                  <FontAwesomeIcon icon={getRoleIcon(role.name)} className="text-xl" />
-                </div>
-                <h3 className="text-lg font-semibold ml-3">{role.name}</h3>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleEditRole(role)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <FontAwesomeIcon icon={faEdit} />
-                </button>
-                <button
-                  onClick={() => handleDeleteRole(role.id)}
-                  className="text-gray-400 hover:text-red-600"
-                >
-                  <FontAwesomeIcon icon={faTrash} />
-                </button>
-                <button
-                  onClick={() => handleToggleStatus(role.id)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <FontAwesomeIcon
-                    icon={role.status === 'active' ? faToggleOn : faToggleOff}
-                    className={role.status === 'active' ? 'text-green-500' : 'text-gray-400'}
-                  />
-                </button>
-              </div>
-            </div>
-
-            {/* Permissions Grid */}
-            <div className="grid grid-cols-2 gap-2">
-              {Object.entries(role.permissions).map(([module, perms]) => (
-                <div key={module} className="text-sm">
-                  <div className="font-medium capitalize">{module}</div>
-                  <div className="flex flex-wrap gap-2 text-xs text-gray-500">
-                    {Object.entries(perms).map(([action, enabled]) => (
-                      <span key={action} className="flex items-center">
-                        <FontAwesomeIcon
-                          icon={enabled ? faCheck : faTimes}
-                          className={enabled ? 'text-green-500' : 'text-gray-400'}
-                        />
-                        <span className="ml-1 capitalize">{action}</span>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex items-center justify-between mt-4">
-              <span className="text-sm text-gray-500">
-                {role.userCount} users
-              </span>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                role.status === 'active'
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-gray-100 text-gray-800'
-              }`}>
-                {role.status}
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
     </div>
   );
 };

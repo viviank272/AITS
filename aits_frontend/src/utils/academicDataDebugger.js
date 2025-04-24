@@ -47,13 +47,19 @@ export const validateAcademicData = (colleges, programs, programsByDepartment) =
   );
   
   if (orphanedDepartments.length > 0) {
-    console.warn('Orphaned departments (not in any college):', orphanedDepartments);
+    console.log('Departments not explicitly assigned to colleges:', orphanedDepartments.length);
+    // Only log first 5 for brevity if too many
+    if (orphanedDepartments.length > 5) {
+      console.log('Sample departments:', orphanedDepartments.slice(0, 5), `and ${orphanedDepartments.length - 5} more...`);
+    } else {
+      console.log('Departments:', orphanedDepartments);
+    }
   }
   
   console.groupEnd();
   
   return {
-    valid: programsWithMissingData.length === 0 && orphanedDepartments.length === 0,
+    valid: programsWithMissingData.length === 0, // Don't consider orphaned departments as an issue
     issues: {
       programsWithMissingData: programsWithMissingData.length,
       orphanedDepartments

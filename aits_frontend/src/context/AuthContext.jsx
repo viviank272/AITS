@@ -13,58 +13,117 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    // Check for existing user data and token on mount
-    const storedUser = localStorage.getItem('user');
-    const token = localStorage.getItem('access');
+  // Function to validate user data
+  const isValidUser = (userData) => {
+    return userData && 
+           typeof userData === 'object' && 
+           userData.role && 
+           userData.email;
+  };
 
-    if (storedUser && token) {
-      setUser(JSON.parse(storedUser));
+  // Function to update user state and handle navigation
+  const updateUserState = (newUser) => {
+    if (isValidUser(newUser)) {
+      setUser(newUser);
+      // Navigate based on role
+      if (newUser.role === 'student') {
+        navigate('/student');
+      } else if (newUser.role === 'lecturer') {
+        navigate('/lecturer');
+      } else if (newUser.role === 'admin') {
+        navigate('/admin');
+      }
+    } else {
+      setUser(null);
+      navigate('/login');
     }
+  };
 
-    setLoading(false);
+  // Check for existing user data and token on mount
+  useEffect(() => {
+    const initializeAuth = () => {
+      const storedUser = localStorage.getItem('user');
+      const token = localStorage.getItem('access');
+      const role = localStorage.getItem('selectedRole');
+
+      if (storedUser && token && role) {
+        try {
+          const parsedUser = typeof storedUser === 'string' ? JSON.parse(storedUser) : storedUser;
+          
+          if (parsedUser.role === role && isValidUser(parsedUser)) {
+            setUser(parsedUser);
+          } else {
+            // Clear invalid data if roles don't match or user is invalid
+            localStorage.removeItem('user');
+            localStorage.removeItem('access');
+            localStorage.removeItem('refreshToken');
+            localStorage.removeItem('selectedRole');
+            setUser(null);
+          }
+        } catch (error) {
+          // Clear invalid data
+          localStorage.removeItem('user');
+          localStorage.removeItem('access');
+          localStorage.removeItem('refreshToken');
+          localStorage.removeItem('selectedRole');
+          setUser(null);
+        }
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    };
+
+    initializeAuth();
   }, []);
 
   const login = async (credentials) => {
     try {
-      // Get the selected role from localStorage
-      const selectedRole = localStorage.getItem('selectedRole');
+      // Clear any existing auth data before attempting new login
+      localStorage.removeItem('access');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+      localStorage.removeItem('selectedRole');
+      setUser(null); // Clear user state immediately
       
-      // Include the role in the credentials
-      const credentialsWithRole = {
-        ...credentials,
-        role: selectedRole
-      };
+      console.log('AuthContext - sending login request with credentials:', credentials);
+      const response = await apiLogin(credentials);
+      console.log('AuthContext - login response:', response);
       
-      console.log('Sending login request with role:', credentialsWithRole);
-      const response = await apiLogin(credentialsWithRole);
-      console.log('Login response:', response);
+      const { access, refresh, user: userData } = response;
       
-      const { token, refresh_token, user: userData } = response;
-      
-      // Store token and user data
-      if (token) {
-        localStorage.setItem('access', token);
-        console.log('Access token stored:', token);
-      } else {
-        console.error('No access token in response');
-        throw new Error('No access token received');
+      if (!access || !userData) {
+        throw new Error('Invalid login response');
       }
       
-      if (refresh_token) {
-        localStorage.setItem('refreshToken', refresh_token);
+      // Parse user data to ensure it's an object
+      const parsedUserData = typeof userData === 'string' ? JSON.parse(userData) : userData;
+      
+      console.log('AuthContext - parsed user data:', parsedUserData);
+      
+      if (!isValidUser(parsedUserData)) {
+        throw new Error('Invalid user data received from server');
       }
       
-      if (userData) {
-        localStorage.setItem('user', JSON.stringify(userData));
-      }
-
-      // Update context state
-      setUser(userData);
-
-      return userData;
+      // Store tokens and user data
+      localStorage.setItem('access', access);
+      localStorage.setItem('refreshToken', refresh);
+      localStorage.setItem('user', JSON.stringify(parsedUserData));
+      localStorage.setItem('selectedRole', parsedUserData.role);
+      
+      // Update context state and handle navigation
+      console.log('AuthContext - setting user state:', parsedUserData);
+      updateUserState(parsedUserData);
+      
+      return parsedUserData;
     } catch (error) {
       console.error('Login error:', error);
+      // Clear auth data on login failure
+      localStorage.removeItem('access');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+      localStorage.removeItem('selectedRole');
+      setUser(null);
       throw error;
     }
   };
@@ -92,7 +151,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('user');
       localStorage.removeItem('selectedRole');
       
-      setUser(null);
+      setUser(null); // Reset user state immediately
       
       // Navigate to landing page
       navigate('/');
@@ -103,7 +162,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
       localStorage.removeItem('selectedRole');
-      setUser(null);
+      setUser(null); // Reset user state immediately
       navigate('/');
     }
   };

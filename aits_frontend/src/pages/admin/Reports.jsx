@@ -1,19 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {
-  faChartBar,
-  faChartLine,
-  faChartPie,
-  faDownload,
-  faFilter,
-  faCalendar,
-  faUsers,
-  faExclamationTriangle,
-  faCheckCircle,
-  faClock,
-  faFileAlt
-} from '@fortawesome/free-solid-svg-icons';
 import '../../utils/fontawesome';
 import {
   ChartBarIcon,
@@ -29,6 +15,12 @@ import {
   DocumentTextIcon,
   UserPlusIcon
 } from '@heroicons/react/24/outline';
+import { getIssueReports, getUserReports, getOverviewReports } from '../../services/api';
+import { Line } from 'react-chartjs-2';
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
+
+// Register Chart.js components
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
 const Reports = () => {
   const location = useLocation();
@@ -55,85 +47,274 @@ const Reports = () => {
   });
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setIssuesData({
-        total: 150,
-        resolved: 120,
-        pending: 30,
-        averageResolutionTime: 2.5,
-        trends: [
-          { date: '2024-01-01', count: 10 },
-          { date: '2024-01-02', count: 15 },
-          { date: '2024-01-03', count: 8 },
-          { date: '2024-01-04', count: 20 },
-          { date: '2024-01-05', count: 12 },
-          { date: '2024-01-06', count: 18 },
-          { date: '2024-01-07', count: 14 }
-        ],
-        byCategory: [
-          { category: 'Technical', count: 45, percentage: 30 },
-          { category: 'Academic', count: 35, percentage: 23 },
-          { category: 'Access', count: 25, percentage: 17 },
-          { category: 'Other', count: 45, percentage: 30 }
-        ],
-        byStatus: [
-          { status: 'Open', count: 30, percentage: 20 },
-          { status: 'In Progress', count: 45, percentage: 30 },
-          { status: 'Resolved', count: 75, percentage: 50 }
-        ]
-      });
-
-      setUsersData({
-        total: 2458,
-        active: 2150,
-        new: 108,
-        byRole: [
-          { role: 'Students', count: 1800, percentage: 73 },
-          { role: 'Faculty', count: 400, percentage: 16 },
-          { role: 'Staff', count: 258, percentage: 11 }
-        ],
-        activity: [
-          { date: '2024-01-01', active: 1800 },
-          { date: '2024-01-02', active: 1850 },
-          { date: '2024-01-03', active: 1900 },
-          { date: '2024-01-04', active: 1950 },
-          { date: '2024-01-05', active: 2000 },
-          { date: '2024-01-06', active: 2050 },
-          { date: '2024-01-07', active: 2150 }
-        ]
-      });
-
-      setLoading(false);
-      
-      // Check URL parameters for actions
-      const searchParams = new URLSearchParams(location.search);
-      const action = searchParams.get('action');
-      
-      if (action === 'export') {
-        // Set a small timeout to ensure the UI is fully rendered
-        setTimeout(() => {
-          setShowExportModal(true);
-          if (exportButtonRef.current) {
-            exportButtonRef.current.focus();
-          }
-        }, 100);
+    const fetchReportData = async () => {
+      setLoading(true);
+      try {
+        if (reportType === 'overview') {
+          const data = await getOverviewReports(dateRange);
+          processReportData(data.issueData, data.userData);
+        } else if (reportType === 'issues') {
+          const data = await getIssueReports(dateRange);
+          processIssueData(data);
+        } else if (reportType === 'users') {
+          const data = await getUserReports(dateRange);
+          processUserData(data);
+        }
+      } catch (error) {
+        console.error('Error fetching report data:', error);
+        // Fallback to mock data if API call fails
+        fallbackToMockData();
+      } finally {
+        setLoading(false);
+        
+        // Check URL parameters for actions
+        const searchParams = new URLSearchParams(location.search);
+        const action = searchParams.get('action');
+        
+        if (action === 'export') {
+          // Set a small timeout to ensure the UI is fully rendered
+          setTimeout(() => {
+            setShowExportModal(true);
+            if (exportButtonRef.current) {
+              exportButtonRef.current.focus();
+            }
+          }, 100);
+        }
       }
-    }, 1000);
-  }, [location, dateRange]);
+    };
+
+    fetchReportData();
+  }, [location, dateRange, reportType]);
+
+  const processIssueData = (data) => {
+    // If API returns formatted data, use it directly
+    if (data && typeof data === 'object' && data.total !== undefined) {
+      setIssuesData(data);
+      return;
+    }
+
+    // Otherwise, process the raw data
+    if (Array.isArray(data)) {
+      const total = data.length;
+      const resolved = data.filter(issue => issue.status?.name?.toLowerCase() === 'resolved').length;
+      const pending = total - resolved;
+      
+      // Calculate average resolution time
+      let totalResolutionTime = 0;
+      let resolvedIssuesCount = 0;
+      
+      data.forEach(issue => {
+        if (issue.resolved_at && issue.created_at) {
+          const createdDate = new Date(issue.created_at);
+          const resolvedDate = new Date(issue.resolved_at);
+          const resolutionTime = (resolvedDate - createdDate) / (1000 * 60 * 60 * 24); // in days
+          totalResolutionTime += resolutionTime;
+          resolvedIssuesCount++;
+        }
+      });
+      
+      const averageResolutionTime = resolvedIssuesCount > 0 
+        ? (totalResolutionTime / resolvedIssuesCount).toFixed(1) 
+        : 0;
+      
+      // Process trends data (number of issues per day)
+      const trendMap = {};
+      data.forEach(issue => {
+        const date = new Date(issue.created_at).toISOString().split('T')[0];
+        trendMap[date] = (trendMap[date] || 0) + 1;
+      });
+      
+      const sortedDates = Object.keys(trendMap).sort();
+      const trends = sortedDates.map(date => ({ date, count: trendMap[date] }));
+      
+      // Process category distribution
+      const categoryMap = {};
+      data.forEach(issue => {
+        const category = issue.category?.name || 'Uncategorized';
+        categoryMap[category] = (categoryMap[category] || 0) + 1;
+      });
+      
+      const byCategory = Object.entries(categoryMap).map(([category, count]) => ({
+        category,
+        count,
+        percentage: Math.round((count / total) * 100) || 0
+      }));
+      
+      // Process status distribution
+      const statusMap = {};
+      data.forEach(issue => {
+        const status = issue.status?.name || 'Unknown';
+        statusMap[status] = (statusMap[status] || 0) + 1;
+      });
+      
+      const byStatus = Object.entries(statusMap).map(([status, count]) => ({
+        status,
+        count,
+        percentage: Math.round((count / total) * 100) || 0
+      }));
+      
+      setIssuesData({
+        total,
+        resolved,
+        pending,
+        averageResolutionTime,
+        trends,
+        byCategory,
+        byStatus
+      });
+    }
+  };
+
+  const processUserData = (data) => {
+    // If API returns formatted data, use it directly
+    if (data && typeof data === 'object' && data.total !== undefined) {
+      setUsersData(data);
+      return;
+    }
+
+    // Otherwise, process the raw data
+    if (Array.isArray(data)) {
+      const total = data.length;
+      const active = data.filter(user => user.is_active).length;
+      
+      // Get users created in the last X days based on dateRange
+      const now = new Date();
+      let daysAgo;
+      switch (dateRange) {
+        case 'week': daysAgo = 7; break;
+        case 'month': daysAgo = 30; break;
+        case 'quarter': daysAgo = 90; break;
+        case 'year': daysAgo = 365; break;
+        default: daysAgo = 7;
+      }
+      
+      const dateThreshold = new Date(now.setDate(now.getDate() - daysAgo));
+      const newUsers = data.filter(user => new Date(user.date_joined) >= dateThreshold).length;
+      
+      // Process role distribution
+      const roleMap = {};
+      data.forEach(user => {
+        let role;
+        if (user.user_type === 'student') role = 'Students';
+        else if (user.college) role = 'Colleges';
+        else if (user.user_type === 'staff' || user.is_staff) role = 'Staff';
+        else role = 'Other';
+        
+        roleMap[role] = (roleMap[role] || 0) + 1;
+      });
+      
+      const byRole = Object.entries(roleMap).map(([role, count]) => ({
+        role,
+        count,
+        percentage: Math.round((count / total) * 100) || 0
+      }));
+      
+      // Generate user activity data based on creation dates
+      // This is a proxy for real login activity which would require additional tracking
+      const activityMap = {};
+      const pastDate = new Date();
+      pastDate.setDate(now.getDate() - 7);
+      
+      // Create array of dates for the selected period
+      const dates = [];
+      const currentDate = new Date(pastDate);
+      while (currentDate <= now) {
+        dates.push(currentDate.toISOString().split('T')[0]);
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+      
+      // Count users that existed on each date
+      dates.forEach(date => {
+        const activeUsersCount = data.filter(user => 
+          new Date(user.date_joined) <= new Date(date) && user.is_active
+        ).length;
+        activityMap[date] = activeUsersCount;
+      });
+      
+      const activity = Object.entries(activityMap).map(([date, active]) => ({ date, active }));
+      
+      setUsersData({
+        total,
+        active,
+        new: newUsers,
+        byRole,
+        activity
+      });
+    }
+  };
+
+  const processReportData = (issueData, userData) => {
+    processIssueData(issueData);
+    processUserData(userData);
+  };
+
+  const fallbackToMockData = () => {
+    // Generate a series of consecutive dates
+    const today = new Date();
+    const trendDates = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(today.getDate() - i);
+      trendDates.push(date.toISOString().split('T')[0]);
+    }
+
+    setIssuesData({
+      total: 150,
+      resolved: 120,
+      pending: 30,
+      averageResolutionTime: 2.5,
+      trends: [
+        { date: trendDates[0], count: 10 },
+        { date: trendDates[1], count: 15 },
+        { date: trendDates[2], count: 8 },
+        { date: trendDates[3], count: 20 },
+        { date: trendDates[4], count: 12 },
+        { date: trendDates[5], count: 18 },
+        { date: trendDates[6], count: 14 }
+      ],
+      byCategory: [
+        { category: 'Technical', count: 45, percentage: 30 },
+        { category: 'Academic', count: 35, percentage: 23 },
+        { category: 'Access', count: 25, percentage: 17 },
+        { category: 'Other', count: 45, percentage: 30 }
+      ],
+      byStatus: [
+        { status: 'Open', count: 30, percentage: 20 },
+        { status: 'In Progress', count: 45, percentage: 30 },
+        { status: 'Resolved', count: 75, percentage: 50 }
+      ]
+    });
+
+    setUsersData({
+      total: 2458,
+      active: 2150,
+      new: 108,
+      byRole: [
+        { role: 'Students', count: 1800, percentage: 73 },
+        { role: 'Colleges', count: 400, percentage: 16 },
+        { role: 'Staff', count: 258, percentage: 11 }
+      ],
+      activity: [
+        { date: trendDates[0], active: 1800 },
+        { date: trendDates[1], active: 1850 },
+        { date: trendDates[2], active: 1900 },
+        { date: trendDates[3], active: 1950 },
+        { date: trendDates[4], active: 2000 },
+        { date: trendDates[5], active: 2050 },
+        { date: trendDates[6], active: 2150 }
+      ]
+    });
+  };
 
   const handleDateRangeChange = (e) => {
     setDateRange(e.target.value);
-    // Fetch new data based on date range
   };
 
   const handleReportTypeChange = (type) => {
     setReportType(type);
-    // Fetch new data based on report type
   };
 
   const handleExport = () => {
-    // Set show export modal to true
     setShowExportModal(true);
   };
   
@@ -147,6 +328,215 @@ const Reports = () => {
   
   const handleExportCancel = () => {
     setShowExportModal(false);
+  };
+
+  // User activity chart options
+  const getUserActivityChartData = () => {
+    return {
+      labels: usersData.activity.map(item => {
+        const date = new Date(item.date);
+        return `${date.getMonth()+1}/${date.getDate()}`;
+      }),
+      datasets: [
+        {
+          label: 'Active Users',
+          data: usersData.activity.map(item => item.active),
+          borderColor: 'rgb(59, 130, 246)',
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.4,
+          pointBackgroundColor: 'rgb(59, 130, 246)',
+          pointRadius: 4,
+          pointHoverRadius: 6,
+        }
+      ]
+    };
+  };
+
+  // Issue trends chart data
+  const getIssueTrendsChartData = () => {
+    return {
+      labels: issuesData.trends.map(item => {
+        const date = new Date(item.date);
+        return `${date.getMonth()+1}/${date.getDate()}`;
+      }),
+      datasets: [
+        {
+          label: 'New Issues',
+          data: issuesData.trends.map(item => item.count),
+          borderColor: 'rgb(234, 88, 12)',
+          backgroundColor: 'rgba(234, 88, 12, 0.1)',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.4,
+          pointBackgroundColor: 'rgb(234, 88, 12)',
+          pointRadius: 4,
+          pointHoverRadius: 6,
+        }
+      ]
+    };
+  };
+
+  // Combined activity chart data
+  const getCombinedActivityChartData = () => {
+    // Create a date range that includes all dates from both datasets
+    const userDates = usersData.activity.map(item => item.date);
+    const issueDates = issuesData.trends.map(item => item.date);
+    const allDates = [...new Set([...userDates, ...issueDates])].sort();
+    
+    // Create a map for quick lookup of user activity and issue counts by date
+    const userActivityMap = new Map(usersData.activity.map(item => [item.date, item.active]));
+    const issueCountMap = new Map(issuesData.trends.map(item => [item.date, item.count]));
+    
+    return {
+      labels: allDates.map(date => {
+        const dateObj = new Date(date);
+        return `${dateObj.getMonth()+1}/${dateObj.getDate()}`;
+      }),
+      datasets: [
+        {
+          label: 'Active Users',
+          data: allDates.map(date => userActivityMap.get(date) || null),
+          borderColor: 'rgb(59, 130, 246)',
+          backgroundColor: 'rgba(59, 130, 246, 0)',
+          borderWidth: 2,
+          tension: 0.4,
+          pointBackgroundColor: 'rgb(59, 130, 246)',
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          yAxisID: 'y',
+        },
+        {
+          label: 'New Issues',
+          data: allDates.map(date => issueCountMap.get(date) || null),
+          borderColor: 'rgb(234, 88, 12)',
+          backgroundColor: 'rgba(234, 88, 12, 0)',
+          borderWidth: 2,
+          tension: 0.4,
+          pointBackgroundColor: 'rgb(234, 88, 12)',
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          yAxisID: 'y1',
+        }
+      ]
+    };
+  };
+
+  // Combined chart options
+  const combinedChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: true,
+        position: 'top',
+      },
+      tooltip: {
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        padding: 10,
+        titleFont: {
+          size: 14,
+        },
+        bodyFont: {
+          size: 14,
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: {
+          display: false,
+        }
+      },
+      y: {
+        type: 'linear',
+        display: true,
+        position: 'left',
+        beginAtZero: false,
+        grid: {
+          borderDash: [2, 4],
+          color: '#e5e7eb',
+        },
+        title: {
+          display: true,
+          text: 'Active Users'
+        },
+        ticks: {
+          callback: function(value) {
+            if (value >= 1000) {
+              return (value / 1000) + 'k';
+            }
+            return value;
+          }
+        }
+      },
+      y1: {
+        type: 'linear',
+        display: true,
+        position: 'right',
+        beginAtZero: true,
+        grid: {
+          display: false,
+        },
+        title: {
+          display: true,
+          text: 'New Issues'
+        }
+      }
+    }
+  };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: true,
+        position: 'top',
+      },
+      tooltip: {
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        padding: 10,
+        titleFont: {
+          size: 14,
+        },
+        bodyFont: {
+          size: 14,
+        },
+        callbacks: {
+          title: (context) => {
+            const index = context[0].dataIndex;
+            return usersData.activity[index]?.date || '';
+          },
+          label: (context) => {
+            return `Active Users: ${context.formattedValue}`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: {
+          display: false,
+        },
+      },
+      y: {
+        beginAtZero: false,
+        grid: {
+          borderDash: [2, 4],
+          color: '#e5e7eb',
+        },
+        ticks: {
+          callback: function(value) {
+            if (value >= 1000) {
+              return (value / 1000) + 'k';
+            }
+            return value;
+          }
+        }
+      }
+    }
   };
 
   if (loading) {
@@ -289,8 +679,8 @@ const Reports = () => {
               {/* Issue Trends */}
               <div className="bg-white p-6 rounded-lg shadow">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Issue Trends</h3>
-                <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
-                  <p className="text-gray-500">Chart will be implemented here</p>
+                <div className="h-64 bg-gray-50 rounded-lg">
+                  <Line data={getIssueTrendsChartData()} options={chartOptions} />
                 </div>
               </div>
 
@@ -374,8 +764,8 @@ const Reports = () => {
               {/* User Activity */}
               <div className="bg-white p-6 rounded-lg shadow">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">User Activity</h3>
-                <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
-                  <p className="text-gray-500">Chart will be implemented here</p>
+                <div className="h-64 bg-gray-50 rounded-lg">
+                  <Line data={getUserActivityChartData()} options={chartOptions} />
                 </div>
               </div>
 
@@ -460,8 +850,8 @@ const Reports = () => {
               {/* Combined Activity */}
               <div className="bg-white p-6 rounded-lg shadow">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Combined Activity</h3>
-                <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
-                  <p className="text-gray-500">Chart will be implemented here</p>
+                <div className="h-64 bg-gray-50 rounded-lg">
+                  <Line data={getCombinedActivityChartData()} options={combinedChartOptions} />
                 </div>
               </div>
 

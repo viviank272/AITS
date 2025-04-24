@@ -36,7 +36,6 @@ import StudentSettings from './pages/student/Settings';
 import IssueList from './pages/issues/IssueList';
 import IssueDetails from './pages/issues/IssueDetails';
 import CreateIssue from './pages/issues/CreateIssue';
-
 import EditIssue from './pages/issues/EditIssue';
 import Profile from './pages/Profile';
 import CommunicationGuide from './pages/docs/CommunicationGuide';
@@ -59,7 +58,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user?.user_type)) {
+  if (allowedRoles && !allowedRoles.includes(user?.role)) {
     return <Navigate to="/" replace />;
   }
 
@@ -130,7 +129,6 @@ function App() {
           <Route path="issues" element={<StudentIssues />} />
           <Route path="issues/create" element={<CreateIssue />} />
           <Route path="issues/:issueId" element={<IssueDetails />} />
-
           <Route path="issues/:issueId/edit" element={<EditIssue />} />
           <Route path="messages" element={<StudentMessages />} />
           <Route path="notifications" element={<StudentNotifications />} />

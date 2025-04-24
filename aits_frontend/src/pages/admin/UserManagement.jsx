@@ -15,37 +15,13 @@ import {
   faToggleOff
 } from '@fortawesome/free-solid-svg-icons';
 import '../../utils/fontawesome';
+import { getAllUsers } from '../../services/api';
+import { toast } from 'react-toastify';
 
 const UserManagement = () => {
-  const [users, setUsers] = useState([
-    {
-      id: 1,
-      name: 'Dr. John Smith',
-      email: 'john.smith@muk.ac.ug',
-      role: 'lecturer',
-      department: 'Computer Engineering',
-      status: 'active',
-      lastLogin: '2024-03-15 10:30 AM'
-    },
-    {
-      id: 2,
-      name: 'Sarah Johnson',
-      email: 'sarah.j@muk.ac.ug',
-      role: 'student',
-      department: 'Computer Engineering',
-      status: 'active',
-      lastLogin: '2024-03-14 02:15 PM'
-    },
-    {
-      id: 3,
-      name: 'Prof. Michael Brown',
-      email: 'm.brown@muk.ac.ug',
-      role: 'dean',
-      department: 'College of Engineering',
-      status: 'active',
-      lastLogin: '2024-03-15 09:45 AM'
-    }
-  ]);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState('');
@@ -53,6 +29,34 @@ const UserManagement = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const data = await getAllUsers();
+        // Transform the data to match the component's expected format
+        const transformedUsers = data.map(user => ({
+          id: user.user_id,
+          name: user.full_name,
+          email: user.email,
+          role: user.user_type,
+          department: user.department_name || 'N/A',
+          status: user.is_active ? 'active' : 'inactive',
+          lastLogin: user.last_login ? new Date(user.last_login).toLocaleString() : 'Never'
+        }));
+        setUsers(transformedUsers);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching users:', err);
+        setError('Failed to load users. Please try again later.');
+        toast.error('Failed to load users');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, []);
 
   // Check URL parameters for actions
   useEffect(() => {
@@ -184,89 +188,104 @@ const UserManagement = () => {
         />
       )}
 
+      {/* Loading and Error States */}
+      {loading && (
+        <div className="flex justify-center items-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1e1e77]"></div>
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+          {error}
+        </div>
+      )}
+
       {/* Users Table */}
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Login</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filteredUsers.map(user => (
-              <tr key={user.id}>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 h-10 w-10">
-                      <div className="h-10 w-10 rounded-full bg-[#1e1e77] text-white flex items-center justify-center">
-                        <FontAwesomeIcon icon={faUser} className="text-xl" />
+      {!loading && !error && (
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Login</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredUsers.map(user => (
+                <tr key={user.id}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-10 w-10">
+                        <div className="h-10 w-10 rounded-full bg-[#1e1e77] text-white flex items-center justify-center">
+                          <FontAwesomeIcon icon={faUser} className="text-xl" />
+                        </div>
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                        <div className="text-sm text-gray-500">{user.email}</div>
                       </div>
                     </div>
-                    <div className="ml-4">
-                      <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                      <div className="text-sm text-gray-500">{user.email}</div>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 capitalize">
-                    {user.role}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {user.department}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full capitalize
-                    ${user.status === 'active' ? 'bg-green-100 text-green-800' : 
-                      user.status === 'inactive' ? 'bg-gray-100 text-gray-800' : 
-                      'bg-red-100 text-red-800'}`}>
-                    {user.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {user.lastLogin}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button
-                    onClick={() => setEditingUser(user)}
-                    className="text-blue-600 hover:text-blue-900 mx-2"
-                    title="Edit User"
-                  >
-                    <FontAwesomeIcon icon={faEdit} />
-                  </button>
-                  <button
-                    onClick={() => handleResetPassword(user.id)}
-                    className="text-yellow-600 hover:text-yellow-900 mx-2"
-                    title="Reset Password"
-                  >
-                    <FontAwesomeIcon icon={faKey} />
-                  </button>
-                  <button
-                    onClick={() => handleToggleStatus(user.id)}
-                    className={`${user.status === 'active' ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'} mx-2`}
-                    title={`${user.status === 'active' ? 'Deactivate' : 'Activate'} User`}
-                  >
-                    <FontAwesomeIcon icon={user.status === 'active' ? faToggleOn : faToggleOff} />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteUser(user.id)}
-                    className="text-red-600 hover:text-red-900 mx-2"
-                    title="Delete User"
-                  >
-                    <FontAwesomeIcon icon={faTrash} />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 capitalize">
+                      {user.role}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {user.department}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full capitalize
+                      ${user.status === 'active' ? 'bg-green-100 text-green-800' : 
+                        user.status === 'inactive' ? 'bg-gray-100 text-gray-800' : 
+                        'bg-red-100 text-red-800'}`}>
+                      {user.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {user.lastLogin}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <button
+                      onClick={() => setEditingUser(user)}
+                      className="text-blue-600 hover:text-blue-900 mx-2"
+                      title="Edit User"
+                    >
+                      <FontAwesomeIcon icon={faEdit} />
+                    </button>
+                    <button
+                      onClick={() => handleResetPassword(user.id)}
+                      className="text-yellow-600 hover:text-yellow-900 mx-2"
+                      title="Reset Password"
+                    >
+                      <FontAwesomeIcon icon={faKey} />
+                    </button>
+                    <button
+                      onClick={() => handleToggleStatus(user.id)}
+                      className={`${user.status === 'active' ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'} mx-2`}
+                      title={`${user.status === 'active' ? 'Deactivate' : 'Activate'} User`}
+                    >
+                      <FontAwesomeIcon icon={user.status === 'active' ? faToggleOn : faToggleOff} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteUser(user.id)}
+                      className="text-red-600 hover:text-red-900 mx-2"
+                      title="Delete User"
+                    >
+                      <FontAwesomeIcon icon={faTrash} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 };
