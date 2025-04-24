@@ -39,7 +39,8 @@ function LecturerDashboard() {
         const criticalResponse = await api.get('/issues/lecturer/', {
           params: {
             priority: 'critical',
-            limit: 5
+            limit: 5,
+            ordering: '-created_at'  // Order by creation date, newest first
           }
         });
 
@@ -51,15 +52,19 @@ function LecturerDashboard() {
         });
 
         // Transform the data to match the frontend format
-        const transformedCriticalIssues = criticalResponse.data?.results?.map(issue => ({
+        const transformedCriticalIssues = criticalResponse.data?.map(issue => ({
           id: issue.issue_id,
           title: issue.title,
           timeLeft: issue.due_date ? calculateTimeLeft(issue.due_date) : '',
           status: issue.status_name,
           daysAgo: calculateDaysAgo(issue.created_at),
-          selected: false
+          selected: false,
+          priority: issue.priority_name,
+          category: issue.category_name,
+          reporter: issue.reporter_details?.full_name || 'Unknown'
         })) || [];
 
+        console.log('Critical issues:', transformedCriticalIssues); // Debug log
         setCriticalPriorityIssues(transformedCriticalIssues);
         setCategoryDistribution(categoryResponse.data?.results || []);
 
@@ -140,7 +145,7 @@ function LecturerDashboard() {
     };
 
     fetchData();
-  }, []);
+  }, [selectedTimeRange]);
 
   const calculateTimeLeft = (dueDate) => {
     const now = new Date();
@@ -154,8 +159,21 @@ function LecturerDashboard() {
     const now = new Date();
     const then = new Date(date);
     const diffTime = now - then;
+    const diffMinutes = Math.floor(diffTime / (1000 * 60));
+    const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays === 0 ? 'Today' : `${diffDays} days ago`;
+
+    if (diffMinutes < 1) {
+      return 'just now';
+    } else if (diffMinutes < 60) {
+      return `${diffMinutes} minute${diffMinutes === 1 ? '' : 's'} ago`;
+    } else if (diffHours < 24) {
+      return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+    } else if (diffDays === 0) {
+      return 'Today';
+    } else {
+      return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+    }
   };
 
   const handleIssueClick = (issueId) => {
@@ -194,24 +212,20 @@ function LecturerDashboard() {
   };
 
   const getStatusColor = (status) => {
-    switch (status?.toLowerCase()) {
+    switch (status.toLowerCase()) {
       case 'open':
-      case 'pending':
         return 'bg-yellow-100 text-yellow-800';
-      case 'in progress':
       case 'in_progress':
         return 'bg-blue-100 text-blue-800';
       case 'resolved':
         return 'bg-green-100 text-green-800';
-      case 'closed':
-        return 'bg-gray-100 text-gray-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getPriorityColor = (priority) => {
-    switch (priority?.toLowerCase()) {
+    switch (priority.toLowerCase()) {
       case 'critical':
         return 'bg-red-100 text-red-800';
       case 'high':
@@ -219,7 +233,7 @@ function LecturerDashboard() {
       case 'medium':
         return 'bg-yellow-100 text-yellow-800';
       case 'low':
-        return 'bg-green-100 text-green-800';
+        return 'bg-blue-100 text-blue-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -291,7 +305,7 @@ function LecturerDashboard() {
           <div className="bg-white rounded-lg shadow">
             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
               <h2 className="text-lg font-medium text-gray-900">Critical Priority Issues</h2>
-              <Link to="/lecturer/issues" className="text-sm text-blue-600 hover:text-blue-500">
+              <Link to="/lecturer/assigned" className="text-sm text-blue-600 hover:text-blue-500">
                 View All
               </Link>
             </div>
@@ -308,8 +322,7 @@ function LecturerDashboard() {
                 criticalPriorityIssues.map((issue) => (
                   <div 
                     key={issue.id} 
-                    className="px-6 py-4 flex items-center group cursor-pointer hover:bg-gray-50"
-                    onClick={() => handleIssueClick(issue.id)}
+                    className="px-6 py-4 flex items-center group hover:bg-gray-50"
                   >
                     <input
                       type="checkbox"
@@ -321,7 +334,9 @@ function LecturerDashboard() {
                       <div className="flex items-center">
                         <div className={`h-2 w-2 rounded-full mr-2 ${
                           issue.timeLeft === 'Overdue' ? 'bg-red-500' : 
-                          issue.status === 'Urgent' ? 'bg-orange-500' : 'bg-yellow-500'
+                          issue.status?.toLowerCase() === 'in_progress' ? 'bg-blue-500' :
+                          issue.status?.toLowerCase() === 'resolved' ? 'bg-green-500' :
+                          'bg-yellow-500'
                         }`}></div>
                         <h3 className="text-sm font-medium text-gray-900 group-hover:text-blue-600">
                           {issue.title}
@@ -338,11 +353,35 @@ function LecturerDashboard() {
                             </span>
                           </>
                         )}
+                        {issue.priority && (
+                          <>
+                            <span className="mx-2">•</span>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(issue.priority)}`}>
+                              {issue.priority}
+                            </span>
+                          </>
+                        )}
                         {issue.status && (
                           <>
                             <span className="mx-2">•</span>
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(issue.status)}`}>
                               {issue.status}
+                            </span>
+                          </>
+                        )}
+                        {issue.category && (
+                          <>
+                            <span className="mx-2">•</span>
+                            <span className="text-gray-500">
+                              {issue.category}
+                            </span>
+                          </>
+                        )}
+                        {issue.reporter && (
+                          <>
+                            <span className="mx-2">•</span>
+                            <span className="text-gray-500">
+                              Reported by {issue.reporter}
                             </span>
                           </>
                         )}
@@ -384,17 +423,17 @@ function LecturerDashboard() {
             </div>
             <div className="space-y-4">
               {categoryDistribution.map((category) => (
-                <div key={category.id}>
+                <div key={category.category_id}>
                   <div className="flex justify-between text-sm mb-1">
-                    <span>{category.name}</span>
-                    <span>{category.percentage}%</span>
+                    <span>{category.category_name}</span>
+                    <span>{category.count}</span>
                   </div>
                   <div className="h-2 bg-gray-100 rounded-full">
                     <div 
                       className="h-2 rounded-full" 
                       style={{ 
-                        width: `${category.percentage}%`,
-                        backgroundColor: category.color || '#3B82F6'
+                        width: `${(category.count / categoryDistribution.reduce((sum, c) => sum + c.count, 0)) * 100}%`,
+                        backgroundColor: getCategoryColor(category.category_name)
                       }}
                     ></div>
                   </div>
@@ -538,5 +577,24 @@ function LecturerDashboard() {
     </div>
   );
 }
+
+// Helper function to get category color
+const getCategoryColor = (categoryName) => {
+  const colors = {
+    'Academic': '#3B82F6', // blue
+    'Administrative': '#EF4444', // red
+    'Technical Support': '#10B981', // green
+    'Registration': '#F59E0B', // yellow
+    'General': '#6B7280', // gray
+    'Grading': '#8B5CF6', // purple
+    'Financial': '#EC4899', // pink
+    'Library': '#14B8A6', // teal
+    'IT Services': '#6366F1', // indigo
+    'Campus Security': '#F97316', // orange
+    'Facilities': '#84CC16' // lime
+  };
+
+  return colors[categoryName] || '#3B82F6'; // Default to blue if category not found
+};
 
 export default LecturerDashboard; 
