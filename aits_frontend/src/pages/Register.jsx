@@ -1,255 +1,274 @@
+// import React, { useState, useEffect } from 'react';
+// import { useNavigate } from 'react-router-dom';
+// import { Container, Box, Typography, TextField, Button, Paper, Alert } from '@mui/material';
+// import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
-import { useState } from "react";
-import "./Register.css";
+// const Register = () => {
+//   const navigate = useNavigate();
+//   const [selectedRole, setSelectedRole] = useState('');
+//   const [formData, setFormData] = useState({
+//     firstName: '',
+//     lastName: '',
+//     email: '',
+//     registrationNumber: '',
+//     studentNumber: '',
+//     password: '',
+//     confirmPassword: '',
+//     verificationCode: ''
+//   });
+//   const [showPassword, setShowPassword] = useState(false);
+//   const [error, setError] = useState('');
+//   const [loading, setLoading] = useState(false);
+//   const [verificationStep, setVerificationStep] = useState(false);
+//   const [verificationMessage, setVerificationMessage] = useState('');
 
-const Register = () => {
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+//   useEffect(() => {
+//     const role = localStorage.getItem('selectedRole');
+//     if (!role) {
+//       navigate('/');
+//       return;
+//     }
+//     setSelectedRole(role);
+//   }, [navigate]);
 
-  const handleRegister = (e) => {
-    e.preventDefault();
-    alert(`User Registered: ${username}, ${email}`);
-  };
+//   const handleChange = (e) => {
+//     const { name, value } = e.target;
+//     setFormData(prev => ({
+//       ...prev,
+//       [name]: value
+//     }));
+//   };
 
-  return (
-    <form onSubmit={handleRegister}>
-      <input type="text" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} required />
-      <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-      <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-      <button type="submit">Register</button>
-    </form>
-  );
-};
+//   const handleSubmit = async (e) => {
+//     e.preventDefault();
+//     setError('');
+//     setLoading(true);
 
-export default Register;
+//     if (formData.password !== formData.confirmPassword) {
+//       setError('Passwords do not match');
+//       setLoading(false);
+//       return;
+//     }
 
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { register } from '../services/api';
-import logoWhite from '../assets/logo-white.png'
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Container, Box, Typography, TextField, Button, Paper, Alert } from '@mui/material';
-import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+//     try {
+//       const requestBody = {
+//         firstName: formData.firstName,
+//         lastName: formData.lastName,
+//         email: formData.email,
+//         password: formData.password,
+//         role: selectedRole
+//       };
 
-const Register = () => {
-  const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    verificationCode: ''
-  });
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [verificationStep, setVerificationStep] = useState(false);
-  const [verificationMessage, setVerificationMessage] = useState('');
+//       if (selectedRole === 'student') {
+//         requestBody.registrationNumber = formData.registrationNumber;
+//         requestBody.studentNumber = formData.studentNumber;
+//       }
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
+//       const response = await fetch('http://localhost:8000/api/users/register/', {
+//         method: 'POST',
+//         headers: {
+//           'Content-Type': 'application/json',
+//         },
+//         body: JSON.stringify(requestBody),
+//       });
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+//       const data = await response.json();
 
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      setLoading(false);
-      return;
-    }
+//       if (!response.ok) {
+//         throw new Error(data.error || 'Registration failed');
+//       }
 
-    try {
-      const response = await fetch('http://localhost:8000/api/users/register/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          email: formData.email,
-          password: formData.password
-        }),
-      });
+//       setVerificationStep(true);
+//       setVerificationMessage('Please check your email for the verification code');
+//     } catch (err) {
+//       console.error('Registration error:', err);
+//       setError(err.message || 'Registration failed. Please try again.');
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
 
-      const data = await response.json();
+//   const handleVerification = async (e) => {
+//     e.preventDefault();
+//     setError('');
+//     setLoading(true);
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Registration failed');
-      }
+//     try {
+//       const response = await fetch('http://localhost:8000/api/users/verify/', {
+//         method: 'POST',
+//         headers: {
+//           'Content-Type': 'application/json',
+//         },
+//         body: JSON.stringify({
+//           email: formData.email,
+//           verificationCode: formData.verificationCode
+//         }),
+//       });
 
-      setVerificationStep(true);
-      setVerificationMessage('Please check your email for the verification code');
-    } catch (err) {
-      console.error('Registration error:', err);
-      setError(err.message || 'Registration failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
+//       const data = await response.json();
 
-  const handleVerification = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+//       if (!response.ok) {
+//         throw new Error(data.message || 'Verification failed');
+//       }
 
-    try {
-      const response = await fetch('http://localhost:8000/api/users/verify/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          verificationCode: formData.verificationCode
-        }),
-      });
+//       navigate('/login');
+//     } catch (err) {
+//       setError(err.message);
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
 
-      const data = await response.json();
+//   const renderStudentForm = () => (
+//     <>
+//       <TextField
+//         margin="normal"
+//         required
+//         fullWidth
+//         id="registrationNumber"
+//         label="Registration Number"
+//         name="registrationNumber"
+//         value={formData.registrationNumber}
+//         onChange={handleChange}
+//       />
+//       <TextField
+//         margin="normal"
+//         required
+//         fullWidth
+//         id="studentNumber"
+//         label="Student Number"
+//         name="studentNumber"
+//         value={formData.studentNumber}
+//         onChange={handleChange}
+//       />
+//     </>
+//   );
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Verification failed');
-      }
+//   const renderAdminLecturerForm = () => (
+//     <TextField
+//       margin="normal"
+//       required
+//       fullWidth
+//       id="email"
+//       label="Email Address"
+//       name="email"
+//       autoComplete="email"
+//       value={formData.email}
+//       onChange={handleChange}
+//     />
+//   );
 
-      navigate('/login');
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+//   return (
+//     <Container component="main" maxWidth="xs">
+//       <Box
+//         sx={{
+//           marginTop: 8,
+//           display: 'flex',
+//           flexDirection: 'column',
+//           alignItems: 'center',
+//         }}
+//       >
+//         <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
+//           <Typography component="h1" variant="h5" align="center" gutterBottom>
+//             {verificationStep ? 'Verify Your Email' : `Register as ${selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)}`}
+//           </Typography>
+//           {verificationMessage && (
+//             <Alert severity="info" sx={{ mb: 2 }}>
+//               {verificationMessage}
+//             </Alert>
+//           )}
+//           {error && (
+//             <Alert severity="error" sx={{ mb: 2 }}>
+//               {error}
+//             </Alert>
+//           )}
+//           <Box component="form" onSubmit={verificationStep ? handleVerification : handleSubmit} noValidate>
+//             {!verificationStep ? (
+//               <>
+//                 <TextField
+//                   margin="normal"
+//                   required
+//                   fullWidth
+//                   id="firstName"
+//                   label="First Name"
+//                   name="firstName"
+//                   autoComplete="given-name"
+//                   value={formData.firstName}
+//                   onChange={handleChange}
+//                 />
+//                 <TextField
+//                   margin="normal"
+//                   required
+//                   fullWidth
+//                   id="lastName"
+//                   label="Last Name"
+//                   name="lastName"
+//                   autoComplete="family-name"
+//                   value={formData.lastName}
+//                   onChange={handleChange}
+//                 />
+//                 {selectedRole === 'student' ? renderStudentForm() : renderAdminLecturerForm()}
+//                 <TextField
+//                   margin="normal"
+//                   required
+//                   fullWidth
+//                   name="password"
+//                   label="Password"
+//                   type={showPassword ? 'text' : 'password'}
+//                   id="password"
+//                   autoComplete="new-password"
+//                   value={formData.password}
+//                   onChange={handleChange}
+//                   InputProps={{
+//                     endAdornment: (
+//                       <Button
+//                         onClick={() => setShowPassword(!showPassword)}
+//                         edge="end"
+//                       >
+//                         {showPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+//                       </Button>
+//                     ),
+//                   }}
+//                 />
+//                 <TextField
+//                   margin="normal"
+//                   required
+//                   fullWidth
+//                   name="confirmPassword"
+//                   label="Confirm Password"
+//                   type={showPassword ? 'text' : 'password'}
+//                   id="confirmPassword"
+//                   value={formData.confirmPassword}
+//                   onChange={handleChange}
+//                 />
+//               </>
+//             ) : (
+//               <TextField
+//                 margin="normal"
+//                 required
+//                 fullWidth
+//                 id="verificationCode"
+//                 label="Verification Code"
+//                 name="verificationCode"
+//                 value={formData.verificationCode}
+//                 onChange={handleChange}
+//               />
+//             )}
+//             <Button
+//               type="submit"
+//               fullWidth
+//               variant="contained"
+//               sx={{ mt: 3, mb: 2 }}
+//               disabled={loading}
+//             >
+//               {loading ? 'Processing...' : verificationStep ? 'Verify' : 'Register'}
+//             </Button>
+//           </Box>
+//         </Paper>
+//       </Box>
+//     </Container>
+//   );
+// };
 
-  return (
-    <Container component="main" maxWidth="xs">
-      <Box
-        sx={{
-          marginTop: 8,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-        }}
-      >
-        <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
-          <Typography component="h1" variant="h5" align="center" gutterBottom>
-            {verificationStep ? 'Verify Your Email' : 'Register'}
-          </Typography>
-          {verificationMessage && (
-            <Alert severity="info" sx={{ mb: 2 }}>
-              {verificationMessage}
-            </Alert>
-          )}
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-          <Box component="form" onSubmit={verificationStep ? handleVerification : handleSubmit} noValidate>
-            {!verificationStep ? (
-              <>
-                <TextField
-                  margin="normal"
-                  required
-                  fullWidth
-                  id="firstName"
-                  label="First Name"
-                  name="firstName"
-                  autoComplete="given-name"
-                  value={formData.firstName}
-                  onChange={handleChange}
-                />
-                <TextField
-                  margin="normal"
-                  required
-                  fullWidth
-                  id="lastName"
-                  label="Last Name"
-                  name="lastName"
-                  autoComplete="family-name"
-                  value={formData.lastName}
-                  onChange={handleChange}
-                />
-                <TextField
-                  margin="normal"
-                  required
-                  fullWidth
-                  id="email"
-                  label="Email Address"
-                  name="email"
-                  autoComplete="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                />
-                <TextField
-                  margin="normal"
-                  required
-                  fullWidth
-                  name="password"
-                  label="Password"
-                  type={showPassword ? 'text' : 'password'}
-                  id="password"
-                  autoComplete="new-password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  InputProps={{
-                    endAdornment: (
-                      <Button
-                        onClick={() => setShowPassword(!showPassword)}
-                        edge="end"
-                      >
-                        {showPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
-                      </Button>
-                    ),
-                  }}
-                />
-                <TextField
-                  margin="normal"
-                  required
-                  fullWidth
-                  name="confirmPassword"
-                  label="Confirm Password"
-                  type={showPassword ? 'text' : 'password'}
-                  id="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                />
-              </>
-            ) : (
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                id="verificationCode"
-                label="Verification Code"
-                name="verificationCode"
-                value={formData.verificationCode}
-                onChange={handleChange}
-              />
-            )}
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              sx={{ mt: 3, mb: 2 }}
-              disabled={loading}
-            >
-              {loading ? 'Processing...' : verificationStep ? 'Verify' : 'Register'}
-            </Button>
-          </Box>
-        </Paper>
-      </Box>
-    </Container>
-  );
-};
-
-export default Register ; 
+// export default Register; 
 

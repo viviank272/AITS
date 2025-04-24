@@ -13,115 +13,153 @@ const EditIssue = () => {
   const { getIssueById, updateIssue } = useIssues()
   const [issue, setIssue] = useState(null)
   const [loading, setLoading] = useState(true)
-
-  const [error, setError] = useState('')
   const [error, setError] = useState(null)
   const [categories, setCategories] = useState([])
-
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     category: '',
-
-    priority: 'medium'
+    priority: 'medium',
+    files: []
   })
+  const [selectedFiles, setSelectedFiles] = useState([])
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Fetch categories from backend
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await api.get('/issues/categories/')
+        console.log('Categories API Response:', response.data)
+        
+        if (response.data && Array.isArray(response.data)) {
+          // Sort categories in specific order: Administrative first, then Academic, then IT Support
+          const sortedCategories = [...response.data].sort((a, b) => {
+            const getOrderPriority = (category) => {
+              const name = category.name.toLowerCase();
+              if (name.includes('admin') || name === 'administrative') return 1;
+              if (name.includes('academic')) return 2;
+              if (name.includes('it') || name.includes('support')) return 3;
+              return 4;
+            };
+            return getOrderPriority(a) - getOrderPriority(b);
+          });
+          console.log('Sorted Categories:', sortedCategories)
+          setCategories(sortedCategories);
+        } else {
+          console.error('Invalid categories data format:', response.data)
+          setError('Invalid categories data format received from server')
+        }
+      } catch (err) {
+        console.error('Error fetching categories:', err);
+        setError('Failed to load categories: ' + (err.response?.data?.message || err.message));
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   useEffect(() => {
     const fetchIssue = async () => {
-  priority: 'medium',
-  files: []
-})
-const [selectedFiles, setSelectedFiles] = useState([])
-const [isSubmitting, setIsSubmitting] = useState(false)
-
-// Fetch categories from backend
-useEffect(() => {
-  const fetchCategories = async () => {
-    try {
-      const response = await api.get('/issues/categories/')
-      console.log('Categories API Response:', response.data)
+      if (!issueId) return;
       
-      if (response.data && Array.isArray(response.data)) {
-        // Sort categories in specific order: Administrative first, then Academic, then IT Support
-        const sortedCategories = [...response.data].sort((a, b) => {
-          const getOrderPriority = (category) => {
-            const name = category.name.toLowerCase();
-            if (name.includes('admin') || name === 'administrative') return 1;
-            if (name.includes('academic')) return 2;
-            if (name.includes('it') || name.includes('support')) return 3;
-            return 4;
-          };
-          return getOrderPriority(a) - getOrderPriority(b);
-        });
-        console.log('Sorted Categories:', sortedCategories)
-        setCategories(sortedCategories);
-      } else {
-        console.error('Invalid categories data format:', response.data)
-        setError('Invalid categories data format received from server')
-      }
-    } catch (err) {
-      console.error('Error fetching categories:', err);
-      setError('Failed to load categories: ' + (err.response?.data?.message || err.message));
-    }
-  };
-
-  fetchCategories();
-}, []);
+      try {
         const issueData = await getIssueById(issueId)
         console.log('Fetched issue data:', issueData);
         
         if (!issueData) {
           setError('Issue not found')
-
           return
         }
 
         // Check if the current user is the owner of the issue
-
-        if (issueData.userId !== currentUser.uid) {
+        if (issueData.userId !== currentUser?.uid) {
           setError('You do not have permission to edit this issue')
-          setLoading(false)
-
           return
         }
 
         setIssue(issueData)
-        setFormData({
-          title: issueData.title,
-          description: issueData.description,
-          category: issueData.category,
-          priority: issueData.priority
-        })
-      } 
-         catch (err) {
+        
+        // Get the category ID from the issue data
+        let categoryId;
+        if (issueData.category) {
+          categoryId = typeof issueData.category === 'object' ? issueData.category.id : issueData.category;
+        } else if (issueData.category_id) {
+          categoryId = issueData.category_id;
+        }
+
+        console.log('Category extraction:', {
+          rawCategory: issueData.category,
+          rawCategoryId: issueData.category_id,
+          extractedId: categoryId
+        });
+
+        const formDataToSet = {
+          title: issueData.title || '',
+          description: issueData.description || '',
+          category: categoryId ? String(categoryId) : '',
+          priority: issueData.priority || 'medium',
+          files: issueData.attachments || []
+        };
+
+        console.log('Setting form data:', formDataToSet);
+        setFormData(formDataToSet);
+      } catch (err) {
+        console.error('Error fetching issue:', err);
         setError('Failed to fetch issue details')
-      }
-       finally {
+      } finally {
         setLoading(false)
       }
     }
 
     fetchIssue()
-  }, [issueId, getIssueById, currentUser])
+  }, [issueId, currentUser?.uid])
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
+
     try {
-      await updateIssue(issueId, formData)
-      navigate(`/student/issues/${issueId}`)
-    } catch (err) {
-      setError('Failed to update issue')
+      const formDataWithFiles = new FormData();
+      Object.keys(formData).forEach(key => {
+        if (key === 'files') {
+          formData.files.forEach(file => {
+            formDataWithFiles.append('files', file);
+          });
+        } else if (key === 'category') {
+          formDataWithFiles.append('category_id', formData.category);
+        } else {
+          formDataWithFiles.append(key, formData[key]);
+        }
+      });
+
+      console.log('Submitting form data:', {
+        ...Object.fromEntries(formDataWithFiles.entries()),
+        files: formData.files?.length || 0
+      });
+
+      await updateIssue(issueId, formDataWithFiles);
+      toast.success('Issue updated successfully!');
+      navigate('/student/issues');
+    } catch (error) {
+      console.error('Error updating issue:', error);
+      console.error('Error response:', error.response?.data);
+      setError(error.response?.data?.detail || 'Failed to update issue. Please try again.');
+      toast.error(error.response?.data?.detail || 'Failed to update issue. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target
+    console.log('Handle change:', { name, value, previousValue: formData[name] });
     setFormData(prev => ({
       ...prev,
       [name]: value
     }))
   }
-
 
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files)
@@ -137,18 +175,29 @@ useEffect(() => {
   if (!issue) return <div className="flex justify-center items-center h-64">Issue not found</div>
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Edit Issue</h1>
+    <div className="h-full p-4">
+      <div className="mb-4">
         <button
-          onClick={() => navigate(`/student/issues/${issueId}`)}
-          className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+          onClick={() => navigate(-1)}
+          className="text-blue-600 hover:text-blue-800 flex items-center"
         >
-          Cancel
+          <ArrowLeftIcon className="h-5 w-5 mr-2" /> Back to Issues
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="bg-white rounded-lg shadow h-[calc(100vh-120px)] overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-200">
+          <h1 className="text-xl font-semibold text-gray-900">Edit Issue</h1>
+        </div>
+
+        <div className="px-4 py-3 h-[calc(100%-60px)] overflow-y-auto">
+          {error && (
+            <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="title" className="block text-sm font-medium text-gray-700">
             Title

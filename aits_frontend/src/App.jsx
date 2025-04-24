@@ -13,9 +13,8 @@ import LecturerDashboard from './pages/LecturerDashboard';
 import StudentDashboard from './pages/StudentDashboard';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
-import Register from './pages/Register';
+// import Register from './pages/Register';
 import NotFound from './pages/NotFound';
-import IssueGraphs from './components/admin/Issue Trend graphs';
 
 // Admin Pages
 import UserManagement from './pages/admin/UserManagement';
@@ -29,7 +28,6 @@ import SystemSettings from './pages/admin/SystemSettings';
 import RoleManagement from './pages/admin/RoleManagement';
 import AuditLogs from './pages/admin/AuditLogs';
 import IssueGraphs from './components/admin/Issue Trend graphs';
-
 
 // Student Pages
 import StudentIssues from './pages/student/Issues';
@@ -48,12 +46,8 @@ import CommunicationGuide from './pages/docs/CommunicationGuide';
 
 // Lecturer Pages
 import AssignedIssues from './pages/lecturer/AssignedIssues';
-import DepartmentIssues from './pages/lecturer/DepartmentIssues';
-import LecturerMessages from './pages/lecturer/Messages';
 import LecturerNotifications from './pages/lecturer/Notifications';
-import LecturerReports from './pages/lecturer/Reports';
 import LecturerSettings from './pages/lecturer/Settings';
-import { ResolvedIssuesContext } from './components/lecturer/ResolvedIssuesContext';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -65,7 +59,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user?.user_type)) {
+  if (allowedRoles && !allowedRoles.includes(user?.role)) {
     return <Navigate to="/" replace />;
   }
 
@@ -81,7 +75,7 @@ function App() {
           {/* Public Routes */}
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          {/* <Route path="/register" element={<Register />} /> */}
 
           {/* Admin Routes */}
           <Route
@@ -117,14 +111,10 @@ function App() {
           >
             <Route index element={<LecturerDashboard />} />
             <Route path="assigned" element={<AssignedIssues />} />
-            <Route path="department" element={<DepartmentIssues />} />
-            <Route path="messages" element={<LecturerMessages />} />
             <Route path="notifications" element={<LecturerNotifications />} />
-            <Route path="reports" element={<LecturerReports />} />
             <Route path="settings" element={<LecturerSettings />} />
             <Route path="issues/create" element={<CreateIssue />} />
             <Route path="issues/:issueId" element={<IssueDetails />} />
-            <Route path="resolved" element={<ResolvedIssuesContext />} />
           </Route>
 
           {/* Student Routes */}

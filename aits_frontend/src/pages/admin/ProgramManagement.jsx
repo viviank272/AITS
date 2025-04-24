@@ -1,184 +1,179 @@
 import { useState, useEffect } from 'react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  PlusIcon,
-  PencilSquareIcon,
-  TrashIcon,
-  AcademicCapIcon
-} from '@heroicons/react/24/outline';
-import ProgramForm from '../../components/programs/ProgramForm';
+  faEdit,
+  faTrash,
+  faSpinner,
+  faPlus,
+} from '@fortawesome/free-solid-svg-icons';
+import { getPrograms, createProgram, updateProgram, deleteProgram } from '../../services/api';
+import AddProgramDialog from '../../components/programs/AddProgramDialog';
+import { toast } from 'react-toastify';
 
-function ProgramManagement() {
+const ProgramManagement = () => {
   const [programs, setPrograms] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [showDialog, setShowDialog] = useState(false);
   const [selectedProgram, setSelectedProgram] = useState(null);
 
-  // Mock data for testing
-  const mockPrograms = [
-    {
-      id: 1,
-      name: 'Bachelor of Science in Computer Science',
-      code: 'BSC-CS',
-      department: 'Computer Science',
-      college: 'College of Computing and Information Sciences',
-      duration: '4 years',
-      coordinator: 'Dr. Alice Johnson',
-      is_active: true
-    },
-    {
-      id: 2,
-      name: 'Bachelor of Information Technology',
-      code: 'BIT',
-      department: 'Information Technology',
-      college: 'College of Computing and Information Sciences',
-      duration: '3 years',
-      coordinator: 'Dr. Bob Smith',
-      is_active: true
-    },
-    {
-      id: 3,
-      name: 'Master of Computer Science',
-      code: 'MSC-CS',
-      department: 'Computer Science',
-      college: 'College of Computing and Information Sciences',
-      duration: '2 years',
-      coordinator: 'Dr. Carol Williams',
-      is_active: true
-    }
-  ];
-
+  // Fetch programs on component mount
   useEffect(() => {
-    // Simulate API call
-    setPrograms(mockPrograms);
-    setLoading(false);
+    const fetchPrograms = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await getPrograms();
+        setPrograms(data);
+      } catch (err) {
+        console.error('Error fetching programs:', err);
+        setError('Failed to fetch programs. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPrograms();
   }, []);
 
   const handleAddProgram = () => {
     setSelectedProgram(null);
-    setShowModal(true);
+    setShowDialog(true);
   };
 
   const handleEditProgram = (program) => {
     setSelectedProgram(program);
-    setShowModal(true);
+    setShowDialog(true);
   };
 
-  const handleDeleteProgram = (programId) => {
-    // Add confirmation dialog and API call here
-    setPrograms(programs.filter(program => program.id !== programId));
-  };
-
-  const handleSubmit = (programData) => {
-    if (selectedProgram) {
-      // Update existing program
-      setPrograms(programs.map(program =>
-        program.id === selectedProgram.id ? { ...program, ...programData } : program
-      ));
-    } else {
-      // Add new program
-      setPrograms([...programs, { ...programData, id: programs.length + 1 }]);
+  const handleDeleteProgram = async (programId) => {
+    if (!window.confirm('Are you sure you want to delete this program?')) {
+      return;
     }
-    setShowModal(false);
+
+    try {
+      setLoading(true);
+      await deleteProgram(programId);
+      setPrograms(programs.filter(p => p.program_id !== programId));
+      toast.success('Program deleted successfully');
+    } catch (err) {
+      console.error('Error deleting program:', err);
+      toast.error('Failed to delete program');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (loading) {
+  const handleSaveProgram = async (formData) => {
+    try {
+      if (selectedProgram) {
+        // Update existing program
+        const updatedProgram = await updateProgram(selectedProgram.program_id, formData);
+        setPrograms(programs.map(p => 
+          p.program_id === selectedProgram.program_id ? updatedProgram : p
+        ));
+        toast.success('Program updated successfully');
+      } else {
+        // Create new program
+        const newProgram = await createProgram(formData);
+        setPrograms([...programs, newProgram]);
+        toast.success('Program created successfully');
+      }
+      setShowDialog(false);
+    } catch (err) {
+      console.error('Error saving program:', err);
+      throw err; // Let the dialog component handle the error
+    }
+  };
+
+  if (loading && !programs.length) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="flex justify-center items-center h-full">
+        <FontAwesomeIcon icon={faSpinner} spin size="3x" />
+      </div>
+    );
+  }
+
+  if (error && !programs.length) {
+    return (
+      <div className="text-center text-red-500">
+        {error}
       </div>
     );
   }
 
   return (
-    <div className="py-6">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-semibold text-gray-900">Program Management</h1>
-          <button
-            onClick={handleAddProgram}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-          >
-            <PlusIcon className="h-5 w-5 mr-2" />
-            Add Program
-          </button>
-        </div>
-
-        {/* Program List */}
-        <div className="mt-8 flex flex-col">
-          <div className="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
-            <div className="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
-              <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-                <table className="min-w-full divide-y divide-gray-300">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Program</th>
-                      <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Code</th>
-                      <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Department</th>
-                      <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Duration</th>
-                      <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Coordinator</th>
-                      <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Status</th>
-                      <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 bg-white">
-                    {programs.map((program) => (
-                      <tr key={program.id}>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900">
-                          <div className="flex items-center">
-                            <AcademicCapIcon className="h-5 w-5 text-gray-400 mr-2" />
-                            <div>
-                              <div className="font-medium">{program.name}</div>
-                              <div className="text-gray-500">{program.college}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{program.code}</td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{program.department}</td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{program.duration}</td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{program.coordinator}</td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm">
-                          <span className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
-                            program.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                          }`}>
-                            {program.is_active ? 'Active' : 'Inactive'}
-                          </span>
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                          <div className="flex items-center space-x-4">
-                            <button
-                              onClick={() => handleEditProgram(program)}
-                              className="text-blue-600 hover:text-blue-900"
-                            >
-                              <PencilSquareIcon className="h-5 w-5" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteProgram(program.id)}
-                              className="text-red-600 hover:text-red-900"
-                            >
-                              <TrashIcon className="h-5 w-5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Program Management</h1>
+        <button
+          onClick={handleAddProgram}
+          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <FontAwesomeIcon icon={faPlus} className="mr-2" />
+          Add Program
+        </button>
       </div>
 
-      {/* Program Form Modal */}
-      {showModal && (
-        <ProgramForm
+      <div className="bg-white shadow overflow-hidden sm:rounded-md">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Program Name</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Program Code</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">College</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {programs.map((program) => (
+              <tr key={program.program_id}>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{program.program_name}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{program.program_code}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{program.college_name}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{program.department_name}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{program.duration}</td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    program.is_active
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {program.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <button
+                    onClick={() => handleEditProgram(program)}
+                    className="text-blue-600 hover:text-blue-900 mr-4"
+                  >
+                    <FontAwesomeIcon icon={faEdit} />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteProgram(program.program_id)}
+                    className="text-red-600 hover:text-red-900"
+                  >
+                    <FontAwesomeIcon icon={faTrash} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {showDialog && (
+        <AddProgramDialog
           program={selectedProgram}
-          onSubmit={handleSubmit}
-          onClose={() => setShowModal(false)}
+          onSave={handleSaveProgram}
+          onClose={() => setShowDialog(false)}
         />
       )}
     </div>
   );
-}
+};
 
 export default ProgramManagement; 

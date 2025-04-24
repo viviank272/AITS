@@ -9,6 +9,7 @@ import {
   PlusIcon,
   EllipsisHorizontalIcon
 } from '@heroicons/react/24/outline';
+import { api } from '../services/api';
 
 function LecturerDashboard() {
   const navigate = useNavigate();
@@ -16,139 +17,158 @@ function LecturerDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [stats, setStats] = useState({
     assigned: 0,
-    departmentIssues: 0,
     responseRate: 0,
     resolvedThisWeek: 0,
     slaBreaches: 0
   });
-  const [highPriorityIssues, setHighPriorityIssues] = useState([]);
+  const [criticalPriorityIssues, setCriticalPriorityIssues] = useState([]);
   const [activeTab, setActiveTab] = useState('assigned');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [selectedStatus, setSelectedStatus] = useState('All Status');
   const [issues, setIssues] = useState({
     assigned: [],
-    department: [],
     resolved: []
   });
+  const [categoryDistribution, setCategoryDistribution] = useState([]);
+  const [selectedTimeRange, setSelectedTimeRange] = useState('7');
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setStats({
-        assigned: 12,
-        departmentIssues: 28,
-        responseRate: 92,
-        resolvedThisWeek: 8,
-        slaBreaches: 1
-      });
-
-      setHighPriorityIssues([
-        {
-          id: 'ISS-2024',
-          title: 'Missing grades for CS401 - John Smith',
-          timeLeft: '1 day left',
-          status: 'SLA',
-          daysAgo: 2,
-          selected: false
-        },
-        {
-          id: 'ISS-2023',
-          title: 'System error preventing exam registration',
-          timeLeft: '',
-          status: 'Multiple students',
-          daysAgo: 0,
-          selected: false
-        },
-        {
-          id: 'ISS-2022',
-          title: 'Course materials access issue - CS501',
-          timeLeft: '',
-          status: '5 comments',
-          daysAgo: 1,
-          selected: false
-        },
-        {
-          id: 'ISS-2021',
-          title: 'Assessment deadline extension request',
-          timeLeft: '',
-          status: 'Urgent',
-          daysAgo: 3,
-          selected: false
-        }
-      ]);
-
-      // Set different issues for each tab
-      setIssues({
-        assigned: [
-          {
-            id: 'ISS-2024',
-            title: 'Course registration system error',
-            student: 'Multiple',
-            category: 'Course Registration',
-            priority: 'High',
-            status: 'Open',
-            sla: '1 day left',
-          },
-          {
-            id: 'ISS-2019',
-            title: 'Missing grade for CS401 assignment',
-            student: 'John Smith',
-            category: 'Grading',
-            priority: 'High',
-            status: 'In Progress',
-            sla: '1 day left',
+    const fetchData = async () => {
+      try {
+        // Fetch critical priority issues
+        const criticalResponse = await api.get('/issues/lecturer/', {
+          params: {
+            priority: 'critical',
+            limit: 5
           }
-        ],
-        department: [
-          {
-            id: 'ISS-2015',
-            title: 'Request for lab access after hours',
-            student: 'Emily Chen',
-            category: 'Facilities',
-            priority: 'Medium',
-            status: 'In Progress',
-            sla: '2 days left',
-          },
-          {
-            id: 'ISS-2014',
-            title: 'Assessment deadline extension request',
-            student: 'Michael Johnson',
-            category: 'Academic Advising',
-            priority: 'High',
-            status: 'Open',
-            sla: 'Overdue',
-          }
-        ],
-        resolved: [
-          {
-            id: 'ISS-2010',
-            title: 'Course materials access issue - CS501',
-            student: 'Multiple',
-            category: 'Technical Support',
-            priority: 'High',
-            status: 'Resolved',
-            sla: 'Completed',
-            resolvedDate: '2024-03-23'
-          },
-          {
-            id: 'ISS-2009',
-            title: 'Student attendance record update',
-            student: 'Sarah Wilson',
-            category: 'Academic Advising',
-            priority: 'Medium',
-            status: 'Resolved',
-            sla: 'Completed',
-            resolvedDate: '2024-03-22'
-          }
-        ]
-      });
+        });
 
-      setLoading(false);
-    }, 1000);
+        // Fetch category distribution
+        const categoryResponse = await api.get('/issues/category-distribution/', {
+          params: {
+            time_range: selectedTimeRange
+          }
+        });
+
+        // Transform the data to match the frontend format
+        const transformedCriticalIssues = criticalResponse.data?.results?.map(issue => ({
+          id: issue.issue_id,
+          title: issue.title,
+          timeLeft: issue.due_date ? calculateTimeLeft(issue.due_date) : '',
+          status: issue.status_name,
+          daysAgo: calculateDaysAgo(issue.created_at),
+          selected: false
+        })) || [];
+
+        setCriticalPriorityIssues(transformedCriticalIssues);
+        setCategoryDistribution(categoryResponse.data?.results || []);
+
+        // Fetch stats
+        const statsResponse = await api.get('/issues/stats/');
+        setStats(statsResponse.data || {
+          assigned: 0,
+          responseRate: 0,
+          resolvedThisWeek: 0,
+          slaBreaches: 0
+        });
+
+        // Fetch assigned issues (last 5)
+        const assignedResponse = await api.get('/issues/lecturer/', {
+          params: { 
+            assigned: true,
+            limit: 5,
+            ordering: '-created_at' // Order by creation date, newest first
+          }
+        });
+
+        // Fetch resolved issues
+        const resolvedResponse = await api.get('/issues/lecturer/', {
+          params: { 
+            resolved: true,
+            limit: 5,
+            ordering: '-resolved_at' // Order by resolution date, newest first
+          }
+        });
+
+        // Transform assigned issues to match the table format
+        const transformedAssignedIssues = (assignedResponse.data?.results || []).map(issue => ({
+          issue_id: issue.issue_id,
+          title: issue.title,
+          reporter_details: issue.reporter_details,
+          category_name: issue.category_name,
+          priority_name: issue.priority_name,
+          status_name: issue.status_name,
+          created_at: issue.created_at,
+          due_date: issue.due_date
+        }));
+
+        // Transform resolved issues to match the table format
+        const transformedResolvedIssues = (resolvedResponse.data?.results || []).map(issue => ({
+          issue_id: issue.issue_id,
+          title: issue.title,
+          reporter_details: issue.reporter_details,
+          category_name: issue.category_name,
+          priority_name: issue.priority_name,
+          status_name: issue.status_name,
+          created_at: issue.created_at,
+          resolved_at: issue.resolved_at
+        }));
+
+        setIssues({
+          assigned: transformedAssignedIssues,
+          resolved: transformedResolvedIssues
+        });
+
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        console.error('Error response:', error.response?.data);
+        setLoading(false);
+        // Set default values in case of error
+        setCriticalPriorityIssues([]);
+        setStats({
+          assigned: 0,
+          responseRate: 0,
+          resolvedThisWeek: 0,
+          slaBreaches: 0
+        });
+        setIssues({
+          assigned: [],
+          resolved: []
+        });
+      }
+    };
+
+    fetchData();
   }, []);
+
+  const calculateTimeLeft = (dueDate) => {
+    const now = new Date();
+    const due = new Date(dueDate);
+    const diffTime = due - now;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? `${diffDays} days left` : 'Overdue';
+  };
+
+  const calculateDaysAgo = (date) => {
+    const now = new Date();
+    const then = new Date(date);
+    const diffTime = now - then;
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays === 0 ? 'Today' : `${diffDays} days ago`;
+  };
 
   const handleIssueClick = (issueId) => {
     navigate(`/lecturer/issues/${issueId}`);
+  };
+
+  const handleIssueSelect = (e, issueId) => {
+    e.stopPropagation();
+    setCriticalPriorityIssues(prevIssues => 
+      prevIssues.map(issue => 
+        issue.id === issueId ? { ...issue, selected: !issue.selected } : issue
+      )
+    );
   };
 
   const getFilteredIssues = () => {
@@ -165,8 +185,8 @@ function LecturerDashboard() {
     if (searchTerm) {
       filteredIssues = filteredIssues.filter(issue =>
         issue.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        issue.student.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        issue.id.toLowerCase().includes(searchTerm.toLowerCase())
+        issue.student?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        issue.issue_id?.toString().includes(searchTerm)
       );
     }
 
@@ -174,18 +194,39 @@ function LecturerDashboard() {
   };
 
   const getStatusColor = (status) => {
-    switch (status) {
-      case 'SLA':
-        return 'bg-red-100 text-red-800';
-      case 'Multiple students':
+    switch (status?.toLowerCase()) {
+      case 'open':
+      case 'pending':
         return 'bg-yellow-100 text-yellow-800';
-      case '5 comments':
+      case 'in progress':
+      case 'in_progress':
         return 'bg-blue-100 text-blue-800';
-      case 'Urgent':
-        return 'bg-orange-100 text-orange-800';
+      case 'resolved':
+        return 'bg-green-100 text-green-800';
+      case 'closed':
+        return 'bg-gray-100 text-gray-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const getPriorityColor = (priority) => {
+    switch (priority?.toLowerCase()) {
+      case 'critical':
+        return 'bg-red-100 text-red-800';
+      case 'high':
+        return 'bg-orange-100 text-orange-800';
+      case 'medium':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'low':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const handleTimeRangeChange = (e) => {
+    setSelectedTimeRange(e.target.value);
   };
 
   if (loading) {
@@ -224,78 +265,104 @@ function LecturerDashboard() {
         </div>
       </div>
 
+      {/* Stats Overview */}
+      <div className="grid grid-cols-4 gap-4 mb-8">
+        <div className="bg-white rounded-lg shadow p-4">
+          <div className="text-sm text-gray-500">Assigned Issues</div>
+          <div className="text-2xl font-semibold text-gray-900">{stats.assigned}</div>
+        </div>
+        <div className="bg-white rounded-lg shadow p-4">
+          <div className="text-sm text-gray-500">Response Rate</div>
+          <div className="text-2xl font-semibold text-gray-900">{stats.responseRate}%</div>
+        </div>
+        <div className="bg-white rounded-lg shadow p-4">
+          <div className="text-sm text-gray-500">Resolved This Week</div>
+          <div className="text-2xl font-semibold text-gray-900">{stats.resolvedThisWeek}</div>
+        </div>
+        <div className="bg-white rounded-lg shadow p-4">
+          <div className="text-sm text-gray-500">SLA Breaches</div>
+          <div className="text-2xl font-semibold text-gray-900">{stats.slaBreaches}</div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-3 gap-6">
-        {/* High Priority Issues */}
+        {/* Critical Priority Issues */}
         <div className="col-span-2">
           <div className="bg-white rounded-lg shadow">
             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-              <h2 className="text-lg font-medium text-gray-900">High Priority Issues</h2>
+              <h2 className="text-lg font-medium text-gray-900">Critical Priority Issues</h2>
               <Link to="/lecturer/issues" className="text-sm text-blue-600 hover:text-blue-500">
                 View All
               </Link>
             </div>
             <div className="divide-y divide-gray-200">
-              {highPriorityIssues.map((issue) => (
-                <div 
-                  key={issue.id} 
-                  className="px-6 py-4 flex items-center group cursor-pointer hover:bg-gray-50"
-                  onClick={() => handleIssueClick(issue.id)}
-                >
-                  <input
-                    type="checkbox"
-                    checked={issue.selected}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      const updatedIssues = highPriorityIssues.map(i => 
-                        i.id === issue.id ? { ...i, selected: !i.selected } : i
-                      );
-                      setHighPriorityIssues(updatedIssues);
-                    }}
-                    className="h-4 w-4 text-blue-600 rounded border-gray-300 mr-4"
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center">
-                      <div className={`h-2 w-2 rounded-full mr-2 ${
-                        issue.timeLeft ? 'bg-red-500' : 
-                        issue.status === 'Urgent' ? 'bg-orange-500' : 'bg-yellow-500'
-                      }`}></div>
-                      <h3 className="text-sm font-medium text-gray-900 group-hover:text-blue-600">
-                        {issue.title}
-                        <span className="ml-2 text-xs text-gray-500">#{issue.id}</span>
-                      </h3>
-                    </div>
-                    <div className="mt-1 flex items-center text-sm text-gray-500">
-                      <span>{issue.daysAgo === 0 ? 'Today' : issue.daysAgo === 1 ? 'Yesterday' : `${issue.daysAgo} days ago`}</span>
-                      {issue.timeLeft && (
-                        <>
-                          <span className="mx-2">•</span>
-                          <span className="text-red-500">SLA: {issue.timeLeft}</span>
-                        </>
-                      )}
-                      {issue.status && (
-                        <>
-                          <span className="mx-2">•</span>
-                          <span className={issue.status === 'Urgent' ? 'text-orange-500 font-medium' : ''}>
-                            {issue.status}
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  <div className="ml-4 flex-shrink-0">
-                    <button
-                      className="text-gray-400 hover:text-gray-500"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleIssueClick(issue.id);
-                      }}
-                    >
-                      <span className="sr-only">View issue details</span>
-                      <EllipsisHorizontalIcon className="h-5 w-5" />
-                    </button>
-                  </div>
+              {loading ? (
+                <div className="px-6 py-4 flex justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 </div>
-              ))}
+              ) : criticalPriorityIssues.length === 0 ? (
+                <div className="px-6 py-4 text-center text-gray-500">
+                  No critical priority issues found
+                </div>
+              ) : (
+                criticalPriorityIssues.map((issue) => (
+                  <div 
+                    key={issue.id} 
+                    className="px-6 py-4 flex items-center group cursor-pointer hover:bg-gray-50"
+                    onClick={() => handleIssueClick(issue.id)}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={issue.selected}
+                      onChange={(e) => handleIssueSelect(e, issue.id)}
+                      className="h-4 w-4 text-blue-600 rounded border-gray-300 mr-4"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center">
+                        <div className={`h-2 w-2 rounded-full mr-2 ${
+                          issue.timeLeft === 'Overdue' ? 'bg-red-500' : 
+                          issue.status === 'Urgent' ? 'bg-orange-500' : 'bg-yellow-500'
+                        }`}></div>
+                        <h3 className="text-sm font-medium text-gray-900 group-hover:text-blue-600">
+                          {issue.title}
+                          <span className="ml-2 text-xs text-gray-500">#{issue.id}</span>
+                        </h3>
+                      </div>
+                      <div className="mt-1 flex items-center text-sm text-gray-500">
+                        <span>{issue.daysAgo}</span>
+                        {issue.timeLeft && (
+                          <>
+                            <span className="mx-2">•</span>
+                            <span className={`${issue.timeLeft === 'Overdue' ? 'text-red-500' : 'text-gray-500'}`}>
+                              {issue.timeLeft}
+                            </span>
+                          </>
+                        )}
+                        {issue.status && (
+                          <>
+                            <span className="mx-2">•</span>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(issue.status)}`}>
+                              {issue.status}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="ml-4 flex-shrink-0">
+                      <button
+                        className="text-gray-400 hover:text-gray-500"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleIssueClick(issue.id);
+                        }}
+                      >
+                        <span className="sr-only">View issue details</span>
+                        <EllipsisHorizontalIcon className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -305,58 +372,39 @@ function LecturerDashboard() {
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-lg font-medium text-gray-900">Category Distribution</h2>
-              <select className="text-sm border-gray-300 rounded-md">
-                <option>Last 7 days</option>
-                <option>Last 30 days</option>
-                <option>Last 90 days</option>
+              <select 
+                className="text-sm border-gray-300 rounded-md"
+                value={selectedTimeRange}
+                onChange={handleTimeRangeChange}
+              >
+                <option value="7">Last 7 days</option>
+                <option value="30">Last 30 days</option>
+                <option value="90">Last 90 days</option>
               </select>
             </div>
             <div className="space-y-4">
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span>Course Registration</span>
-                  <span>32%</span>
+              {categoryDistribution.map((category) => (
+                <div key={category.id}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>{category.name}</span>
+                    <span>{category.percentage}%</span>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded-full">
+                    <div 
+                      className="h-2 rounded-full" 
+                      style={{ 
+                        width: `${category.percentage}%`,
+                        backgroundColor: category.color || '#3B82F6'
+                      }}
+                    ></div>
+                  </div>
                 </div>
-                <div className="h-2 bg-blue-100 rounded-full">
-                  <div className="h-2 bg-blue-500 rounded-full" style={{ width: '32%' }}></div>
+              ))}
+              {categoryDistribution.length === 0 && (
+                <div className="text-center text-gray-500 py-4">
+                  No category data available
                 </div>
-              </div>
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span>Technical Support</span>
-                  <span>28%</span>
-                </div>
-                <div className="h-2 bg-red-100 rounded-full">
-                  <div className="h-2 bg-red-500 rounded-full" style={{ width: '28%' }}></div>
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span>Academic Advising</span>
-                  <span>24%</span>
-                </div>
-                <div className="h-2 bg-green-100 rounded-full">
-                  <div className="h-2 bg-green-500 rounded-full" style={{ width: '24%' }}></div>
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span>Grading</span>
-                  <span>10%</span>
-                </div>
-                <div className="h-2 bg-yellow-100 rounded-full">
-                  <div className="h-2 bg-yellow-500 rounded-full" style={{ width: '10%' }}></div>
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span>Facilities</span>
-                  <span>6%</span>
-                </div>
-                <div className="h-2 bg-purple-100 rounded-full">
-                  <div className="h-2 bg-purple-500 rounded-full" style={{ width: '6%' }}></div>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -379,16 +427,6 @@ function LecturerDashboard() {
             </button>
             <button
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'department'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-              onClick={() => setActiveTab('department')}
-            >
-              Department Issues ({issues.department.length})
-            </button>
-            <button
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
                 activeTab === 'resolved'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -404,9 +442,7 @@ function LecturerDashboard() {
         <div className="px-8 py-4">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-medium text-gray-900">
-              {activeTab === 'assigned' && 'My Assigned Issues'}
-              {activeTab === 'department' && 'Department Issues'}
-              {activeTab === 'resolved' && 'Recently Resolved Issues'}
+              {activeTab === 'assigned' ? 'My Assigned Issues' : 'Recently Resolved Issues'}
             </h2>
             <div className="flex items-center space-x-4">
               <select 
@@ -441,68 +477,56 @@ function LecturerDashboard() {
                 <tr className="bg-gray-50">
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">#ID</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reporter</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Priority</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    {activeTab === 'resolved' ? 'Resolved Date' : 'SLA'}
-                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {getFilteredIssues().map((issue) => (
                   <tr 
-                    key={issue.id} 
+                    key={issue.issue_id} 
                     className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() => handleIssueClick(issue.id)}
+                    onClick={() => handleIssueClick(issue.issue_id)}
                   >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{issue.id}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">#{issue.issue_id}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{issue.title}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{issue.student}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{issue.category}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {issue.reporter_details?.full_name || 'Unknown'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {issue.category_name || issue.category?.name || 'Uncategorized'}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        issue.priority === 'High' ? 'bg-red-100 text-red-800' :
-                        issue.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-green-100 text-green-800'
-                      }`}>
-                        {issue.priority}
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(issue.priority_name || issue.priority?.name)}`}>
+                        {issue.priority_name || issue.priority?.name || 'Medium'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        issue.status === 'Open' ? 'bg-blue-100 text-blue-800' :
-                        issue.status === 'In Progress' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-green-100 text-green-800'
-                      }`}>
-                        {issue.status}
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(issue.status_name || issue.status?.name)}`}>
+                        {issue.status_name || issue.status?.name || 'Open'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`text-sm ${
-                        activeTab === 'resolved' 
-                          ? 'text-gray-500' 
-                          : issue.sla === 'Overdue' 
-                            ? 'text-red-600 font-medium' 
-                            : 'text-gray-500'
-                      }`}>
-                        {activeTab === 'resolved' ? issue.resolvedDate : issue.sla}
-                      </span>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(issue.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button 
-                        className="text-gray-400 hover:text-gray-500"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          // Handle actions menu
-                        }}
-                      >
-                        <EllipsisHorizontalIcon className="h-5 w-5" />
-                      </button>
+                      <div className="relative">
+                        <button 
+                          className="text-gray-400 hover:text-gray-500"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleIssueClick(issue.issue_id);
+                          }}
+                        >
+                          <EllipsisHorizontalIcon className="h-5 w-5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

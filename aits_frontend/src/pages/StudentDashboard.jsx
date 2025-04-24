@@ -29,7 +29,7 @@ const StudentDashboard = () => {
     
     if (issuesWithResponse.length === 0) return 'No data';
     
-    // Calculate time difference between creation and first response;
+    // Calculate time difference between creation and first response
     const totalResponseTime = issuesWithResponse.reduce((total, issue) => {
       // If we have a first_response_time field use that
       if (issue.first_response_time) {
@@ -397,13 +397,6 @@ const StudentDashboard = () => {
                       </td>
                           <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                             <div className="flex items-center justify-center space-x-2">
-                              <Link 
-                                to={`/student/issues/${issue.issue_id}/edit`} 
-                                className="inline-flex items-center p-1.5 border border-transparent rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                                title="Edit Issue"
-                              >
-                                <PencilIcon className="h-4 w-4" />
-                              </Link>
                               <Link 
                                 to={`/student/issues/${issue.issue_id}`} 
                                 className="inline-flex items-center p-1.5 border border-transparent rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"

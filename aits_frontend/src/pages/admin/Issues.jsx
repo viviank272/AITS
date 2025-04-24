@@ -1,116 +1,297 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faPlus,
-  faEdit,
-  faTrash,
   faSearch,
-  faFilter,
   faSave,
   faTimes,
-  faExclamationTriangle,
-  faCheckCircle,
-  faClock,
-  faUser,
-  faTag
+  faExclamationTriangle
 } from '@fortawesome/free-solid-svg-icons';
+import { getAllIssues, updateIssue, getLecturersAndAdmins, getStatuses } from '../../services/api';
 import '../../utils/fontawesome';
 
 const Issues = () => {
-  const [issues, setIssues] = useState([
-    {
-      id: 1,
-      title: 'Network Connection Issues',
-      description: 'Unable to connect to the university network in the library',
-      category: 'Technical',
-      priority: 'High',
-      status: 'Open',
-      assignedTo: 'IT Support',
-      reportedBy: 'John Doe',
-      dateReported: '2024-03-15 10:30 AM',
-      lastUpdated: '2024-03-15 11:15 AM'
-    },
-    {
-      id: 2,
-      title: 'Library Access Card Not Working',
-      description: 'Student ID card not being recognized at library entrance',
-      category: 'Access',
-      priority: 'Medium',
-      status: 'In Progress',
-      assignedTo: 'Library Staff',
-      reportedBy: 'Jane Smith',
-      dateReported: '2024-03-14 02:15 PM',
-      lastUpdated: '2024-03-15 09:45 AM'
-    }
-  ]);
-
+  const [issues, setIssues] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterPriority, setFilterPriority] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingIssue, setEditingIssue] = useState(null);
+  const [lecturersAndAdmins, setLecturersAndAdmins] = useState([]);
+  const [statusList, setStatusList] = useState([]);
 
   const categories = ['all', 'Technical', 'Access', 'Academic', 'Administrative', 'Other'];
   const priorities = ['all', 'Low', 'Medium', 'High', 'Critical'];
-  const statuses = ['all', 'Open', 'In Progress', 'Resolved', 'Closed'];
+  const statusNames = ['all', 'Open', 'In Progress', 'Resolved', 'Closed'];
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        // Fetch issues
+        console.log('Fetching all issues...');
+        const issuesResponse = await getAllIssues();
+        console.log('Raw API Response:', issuesResponse);
+        
+        if (Array.isArray(issuesResponse)) {
+          // Process each issue to ensure assignee data is properly structured
+          const processedIssues = issuesResponse.map(issue => {
+            // Ensure assignee data is properly structured
+            if (issue.assignee) {
+              return {
+                ...issue,
+                assignee: {
+                  user_id: issue.assignee.user_id,
+                  full_name: issue.assignee.full_name || issue.assignee_details?.full_name,
+                  user_type: issue.assignee.user_type || issue.assignee_details?.user_type
+                }
+              };
+            }
+            return issue;
+          });
+          
+          setIssues(processedIssues);
+        } else if (issuesResponse && issuesResponse.data) {
+          console.log('Setting issues from response.data:', issuesResponse.data);
+          setIssues(issuesResponse.data);
+        } else {
+          console.error('Issues data is not in expected format:', issuesResponse);
+          setError('Failed to load issues. Please try again.');
+        }
+
+        // Fetch statuses from backend
+        try {
+          const statusResponse = await getStatuses();
+          console.log('Fetched statuses:', statusResponse);
+          if (Array.isArray(statusResponse)) {
+            setStatusList(statusResponse);
+          } else {
+            console.error('Status data is not in expected format:', statusResponse);
+          }
+        } catch (error) {
+          console.error('Error fetching statuses:', error);
+        }
+
+        // Fetch lecturers and admins
+        try {
+          const staffResponse = await getLecturersAndAdmins();
+          if (Array.isArray(staffResponse)) {
+            setLecturersAndAdmins(staffResponse);
+          } else {
+            console.error('Staff data is not in expected format:', staffResponse);
+            setError('Failed to load staff data. Please try again.');
+          }
+        } catch (staffError) {
+          console.error('Error fetching staff:', staffError);
+          setError('Failed to load staff data. Please try again.');
+        }
+
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        setError('Failed to load data. Please try again.');
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
   };
 
-  const filteredIssues = issues.filter(issue => {
-    const matchesSearch = 
-      issue.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      issue.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      issue.reportedBy.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesCategory = filterCategory === 'all' || issue.category === filterCategory;
-    const matchesPriority = filterPriority === 'all' || issue.priority === filterPriority;
-    const matchesStatus = filterStatus === 'all' || issue.status === filterStatus;
+  const filteredIssues = (issues || [])
+    .filter(issue => {
+      if (!issue) return false;
+      
+      const matchesSearch = 
+        issue.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        issue.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        issue.reporter?.full_name?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesCategory = filterCategory === 'all' || 
+        (issue.category?.name || issue.category_name) === filterCategory;
+      const matchesPriority = filterPriority === 'all' || 
+        (issue.priority?.name || issue.priority_name) === filterPriority;
+      const matchesStatus = filterStatus === 'all' || 
+        (issue.status?.name || issue.status_name) === filterStatus;
 
-    return matchesSearch && matchesCategory && matchesPriority && matchesStatus;
-  });
+      return matchesSearch && matchesCategory && matchesPriority && matchesStatus;
+    })
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
   const handleAddIssue = () => {
     setShowAddForm(true);
     setEditingIssue(null);
   };
 
-  const handleSaveIssue = (issueData) => {
-    if (editingIssue) {
-      setIssues(issues.map(issue => 
-        issue.id === editingIssue.id ? { ...issue, ...issueData } : issue
-      ));
-      setEditingIssue(null);
-    } else {
-      setIssues([...issues, { 
-        ...issueData, 
-        id: Date.now(),
-        dateReported: new Date().toLocaleString(),
-        lastUpdated: new Date().toLocaleString()
-      }]);
-      setShowAddForm(false);
+  const handleSaveIssue = async (issueData) => {
+    try {
+      if (editingIssue) {
+        const response = await updateIssue(editingIssue.id, issueData);
+        setIssues(issues.map(issue => 
+          issue.id === editingIssue.id ? response.data : issue
+        ));
+        setEditingIssue(null);
+      } else {
+        // Handle new issue creation
+        // This would typically be handled by a separate API call
+        setShowAddForm(false);
+      }
+    } catch (error) {
+      console.error('Error saving issue:', error);
+      setError('Failed to save issue. Please try again.');
     }
   };
 
-  const handleDeleteIssue = (issueId) => {
-    if (window.confirm('Are you sure you want to delete this issue?')) {
-      setIssues(issues.filter(issue => issue.id !== issueId));
+  const handleStatusChange = async (issueId, newStatusName) => {
+    if (!issueId) {
+      console.error('Issue ID is missing:', issueId);
+      setError('Cannot update issue: Missing issue ID');
+      return;
+    }
+
+    try {
+      // Find the status object that matches the new status name
+      const statusObj = statusList.find(s => s.name.toLowerCase() === newStatusName.toLowerCase());
+      if (!statusObj) {
+        console.error('Status not found:', newStatusName);
+        console.log('Available statuses:', statusList);
+        setError('Invalid status selected');
+        return;
+      }
+
+      console.log('Updating status with:', {
+        issueId,
+        newStatusName,
+        statusObj
+      });
+
+      // Create FormData for the update
+      const formData = new FormData();
+      formData.append('status', statusObj.status_id);
+
+      // Update in the backend
+      const response = await updateIssue(issueId, formData);
+      console.log('Update response:', response);
+      
+      // Update the local state with the new status
+      setIssues(prevIssues => prevIssues.map(issue => {
+        if (issue.id === issueId || issue.issue_id === issueId) {
+          return {
+            ...issue,
+            status: statusObj,
+            status_name: statusObj.name,
+            updated_at: new Date().toISOString()
+          };
+        }
+        return issue;
+      }));
+
+      // Clear any existing error
+      setError('');
+    } catch (error) {
+      console.error('Error updating issue status:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data
+      });
+      setError(error.response?.data?.detail || 'Failed to update issue status. Please try again.');
     }
   };
 
-  const handleStatusChange = (issueId, newStatus) => {
-    setIssues(issues.map(issue => 
-      issue.id === issueId 
-        ? { 
-            ...issue, 
-            status: newStatus,
-            lastUpdated: new Date().toLocaleString()
-          } 
-        : issue
-    ));
+  // Helper function to get consistent issue ID
+  const getIssueId = (issue) => {
+    // This function ensures we always get a valid issue ID
+    return issue.issue_id || issue.id;
   };
+
+  const handleAssigneeChange = async (issueId, newAssigneeId) => {
+    try {
+      console.log('Updating assignee:', { issueId, newAssigneeId });
+      if (!issueId) {
+        throw new Error('Issue ID is undefined');
+      }
+      
+      // Convert empty string to null for backend compatibility
+      const assigneeValue = newAssigneeId === '' ? null : newAssigneeId;
+      
+      // Make the API call with explicit payload structure
+      const response = await updateIssue(issueId, { 
+        assignee: assigneeValue 
+      });
+      
+      console.log('Assignee update response:', response);
+      
+      // Find the staff member from our list for immediate UI update
+      const selectedStaff = assigneeValue 
+        ? lecturersAndAdmins.find(staff => staff.user_id.toString() === assigneeValue.toString())
+        : null;
+      
+      // Use the response to update the UI if available, otherwise use our local data
+      if (response && response.data) {
+        setIssues(prevIssues => prevIssues.map(issue => {
+          if (getIssueId(issue) === issueId) {
+            return {
+              ...issue,
+              assignee: response.data.assignee_details || selectedStaff,
+              assignee_details: response.data.assignee_details || selectedStaff,
+              updated_at: response.data.updated_at || new Date().toISOString()
+            };
+          }
+          return issue;
+        }));
+      } else {
+        // Fallback to optimistic update if response doesn't contain expected data
+        setIssues(prevIssues => prevIssues.map(issue => {
+          if (getIssueId(issue) === issueId) {
+            return {
+              ...issue,
+              assignee: selectedStaff,
+              assignee_details: selectedStaff,
+              updated_at: new Date().toISOString()
+            };
+          }
+          return issue;
+        }));
+      }
+      
+      // Clear any error message
+      setError('');
+      
+    } catch (error) {
+      console.error('Error updating issue assignee:', error);
+      console.error('Error details:', error.response?.data || error.message);
+      
+      // Show the error to the user
+      setError(`Failed to update assignee: ${error.response?.data?.detail || error.message || 'Unknown error'}`);
+      
+      // After 3 seconds, clear the error message
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          {error}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">
@@ -147,7 +328,7 @@ const Issues = () => {
           className="px-4 py-2 border rounded-lg"
         >
           {categories.map(category => (
-            <option key={category} value={category}>
+            <option key={`category-${category}`} value={category}>
               {category === 'all' ? 'All Categories' : category}
             </option>
           ))}
@@ -158,7 +339,7 @@ const Issues = () => {
           className="px-4 py-2 border rounded-lg"
         >
           {priorities.map(priority => (
-            <option key={priority} value={priority}>
+            <option key={`priority-${priority}`} value={priority}>
               {priority === 'all' ? 'All Priorities' : priority}
             </option>
           ))}
@@ -168,8 +349,8 @@ const Issues = () => {
           onChange={(e) => setFilterStatus(e.target.value)}
           className="px-4 py-2 border rounded-lg"
         >
-          {statuses.map(status => (
-            <option key={status} value={status}>
+          {statusNames.map(status => (
+            <option key={`status-${status}`} value={status}>
               {status === 'all' ? 'All Statuses' : status}
             </option>
           ))}
@@ -203,79 +384,126 @@ const Issues = () => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {filteredIssues.map(issue => (
-              <tr key={issue.id}>
-                <td className="px-6 py-4">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 h-10 w-10">
-                      <div className="h-10 w-10 rounded-full bg-[#1e1e77] text-white flex items-center justify-center">
-                        <FontAwesomeIcon icon={faExclamationTriangle} className="text-xl" />
+            {filteredIssues.map((issue, index) => {
+              console.log('Rendering issue:', {
+                id: issue.id || issue.issue_id,
+                title: issue.title,
+                status: issue.status
+              });
+              return (
+                <tr key={`issue-${issue.id || issue.issue_id || index}-${issue.title || 'untitled'}`}>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-10 w-10">
+                        <div className="h-10 w-10 rounded-full bg-[#1e1e77] text-white flex items-center justify-center">
+                          <FontAwesomeIcon icon={faExclamationTriangle} className="text-xl" />
+                        </div>
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-900">{issue.title}</div>
                       </div>
                     </div>
-                    <div className="ml-4">
-                      <div className="text-sm font-medium text-gray-900">{issue.title}</div>
-                      <div className="text-sm text-gray-500">{issue.description}</div>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                    {issue.category}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                    ${issue.priority === 'Critical' ? 'bg-red-100 text-red-800' :
-                      issue.priority === 'High' ? 'bg-orange-100 text-orange-800' :
-                      issue.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-green-100 text-green-800'}`}>
-                    {issue.priority}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                    ${issue.status === 'Open' ? 'bg-red-100 text-red-800' :
-                      issue.status === 'In Progress' ? 'bg-yellow-100 text-yellow-800' :
-                      issue.status === 'Resolved' ? 'bg-green-100 text-green-800' :
-                      'bg-gray-100 text-gray-800'}`}>
-                    {issue.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {issue.assignedTo}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {issue.lastUpdated}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button
-                    onClick={() => setEditingIssue(issue)}
-                    className="text-blue-600 hover:text-blue-900 mx-2"
-                    title="Edit Issue"
-                  >
-                    <FontAwesomeIcon icon={faEdit} />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteIssue(issue.id)}
-                    className="text-red-600 hover:text-red-900 mx-2"
-                    title="Delete Issue"
-                  >
-                    <FontAwesomeIcon icon={faTrash} />
-                  </button>
-                  <select
-                    value={issue.status}
-                    onChange={(e) => handleStatusChange(issue.id, e.target.value)}
-                    className="text-sm border rounded px-1 py-0.5"
-                  >
-                    {statuses.filter(status => status !== 'all').map(status => (
-                      <option key={status} value={status}>
-                        {status}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                      {issue.category?.name || issue.category_name || 'Uncategorized'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                      ${(issue.priority?.name || issue.priority_name) === 'Critical' ? 'bg-red-100 text-red-800' :
+                        (issue.priority?.name || issue.priority_name) === 'High' ? 'bg-orange-100 text-orange-800' :
+                        (issue.priority?.name || issue.priority_name) === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-green-100 text-green-800'}`}>
+                      {issue.priority?.name || issue.priority_name || 'Not Set'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                      ${(issue.status?.name || issue.status_name) === 'Open' ? 'bg-green-100 text-green-800' :
+                        (issue.status?.name || issue.status_name) === 'In Progress' ? 'bg-yellow-100 text-yellow-800' :
+                        (issue.status?.name || issue.status_name) === 'Resolved' ? 'bg-gray-100 text-gray-800' :
+                        'bg-gray-100 text-gray-800'}`}>
+                      {issue.status?.name || issue.status_name || 'Not Set'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <select
+                      value={issue.assignee?.user_id || issue.assignee_details?.user_id || ''}
+                      onChange={(e) => {
+                        const issueId = getIssueId(issue);
+                        console.log('Changing assignee for issue:', {
+                          issueId,
+                          currentAssignee: issue.assignee?.user_id || issue.assignee_details?.user_id,
+                          newAssignee: e.target.value
+                        });
+                        if (issueId) {
+                          handleAssigneeChange(issueId, e.target.value);
+                        } else {
+                          console.error('Missing issue ID for assignee update. Full issue:', issue);
+                        }
+                      }}
+                      className="text-sm border rounded px-1 py-0.5"
+                    >
+                      <option key="unassigned" value="">Unassigned</option>
+                      {lecturersAndAdmins.map(staff => (
+                        <option key={`staff-${staff.user_id}`} value={staff.user_id}>
+                          {staff.full_name}
+                        </option>
+                      ))}
+                    </select>
+                    {(issue.assignee || issue.assignee_details) && (
+                      <div className="mt-1">
+                        <span className="text-xs font-medium text-gray-900">
+                          {issue.assignee?.full_name || issue.assignee_details?.full_name || (issue.assignee?.user_id ? 'Loading...' : 'Unassigned')}
+                        </span>
+                        {(issue.assignee?.user_type || issue.assignee_details?.user_type) && (
+                          <span className="text-xs text-gray-500 ml-1">
+                            ({issue.assignee?.user_type || issue.assignee_details?.user_type})
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {new Date(issue.updated_at).toLocaleString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <select
+                      value={issue.status?.name || issue.status_name || 'Open'}
+                      onChange={(e) => {
+                        const issueId = getIssueId(issue);
+                        console.log('Updating status for issue:', {
+                          issueId,
+                          currentStatus: issue.status?.name || issue.status_name,
+                          newStatus: e.target.value,
+                          availableStatuses: statusList.map(s => s.name)
+                        });
+                        if (issueId) {
+                          handleStatusChange(issueId, e.target.value);
+                        } else {
+                          console.error('Missing issue ID for status update. Full issue:', issue);
+                        }
+                      }}
+                      className="text-sm border rounded px-1 py-0.5"
+                    >
+                      {statusList.length > 0 
+                        ? statusList.map(status => (
+                            <option key={`status-option-${status.status_id}`} value={status.name}>
+                              {status.name}
+                            </option>
+                          ))
+                        : statusNames.filter(status => status !== 'all').map(status => (
+                            <option key={`status-option-${status}`} value={status}>
+                              {status}
+                            </option>
+                          ))
+                      }
+                    </select>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

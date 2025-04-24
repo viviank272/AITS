@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faPlus,
   faEdit,
-  faTrash,
+  faBan,
   faChevronDown,
   faChevronRight,
   faSearch,
@@ -12,7 +12,7 @@ import {
   faSave,
   faTimes
 } from '@fortawesome/free-solid-svg-icons';
-import { getColleges, getDepartments, createCollege, updateCollege, deleteCollege, createDepartment, updateDepartment, deleteDepartment } from '../../services/api';
+import { getColleges, getDepartments, createCollege, updateCollege, createDepartment, updateDepartment } from '../../services/api';
 
 const CollegeManagement = () => {
   const location = useLocation();
@@ -29,10 +29,10 @@ const CollegeManagement = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [collegeToDelete, setCollegeToDelete] = useState(null);
+  const [showDisableConfirm, setShowDisableConfirm] = useState(false);
+  const [collegeToDisable, setCollegeToDisable] = useState(null);
   const [showDeleteDepartmentConfirm, setShowDeleteDepartmentConfirm] = useState(false);
-  const [departmentToDelete, setDepartmentToDelete] = useState(null);
+  const [departmentToDisable, setDepartmentToDisable] = useState(null);
 
   // Check if user is authenticated
   useEffect(() => {
@@ -55,8 +55,8 @@ const CollegeManagement = () => {
       try {
         setLoading(true);
         const [collegesData, departmentsData] = await Promise.all([
-          getColleges(),
-          getDepartments()
+          getColleges(true),
+          getDepartments(true)
         ]);
         setColleges(collegesData);
         setDepartments(departmentsData);
@@ -184,48 +184,54 @@ const CollegeManagement = () => {
     }
   };
 
-  const handleDeleteCollege = async (collegeId) => {
-    setCollegeToDelete(collegeId);
-    setShowDeleteConfirm(true);
+  const handleDisableCollege = async (collegeId, isCurrentlyDisabled) => {
+    setCollegeToDisable({ id: collegeId, currentState: isCurrentlyDisabled });
+    setShowDisableConfirm(true);
   };
 
-  const confirmDeleteCollege = async () => {
+  const confirmDisableCollege = async () => {
     try {
-      await deleteCollege(collegeToDelete);
-      setColleges(colleges.filter(c => c.college_id !== collegeToDelete));
-      setDepartments(departments.filter(d => d.college !== collegeToDelete));
-      setSuccessMessage('College deleted successfully');
+      // Toggle the disabled status
+      const updatedCollege = await updateCollege(collegeToDisable.id, { 
+        is_disabled: !collegeToDisable.currentState 
+      });
+      setColleges(colleges.map(c => 
+        c.college_id === collegeToDisable.id ? updatedCollege : c
+      ));
+      setSuccessMessage(`College ${collegeToDisable.currentState ? 'enabled' : 'disabled'} successfully`);
       setTimeout(() => setSuccessMessage(''), 3000);
-      // Scroll to top immediately
       scrollToTop();
     } catch (err) {
-      console.error('Error deleting college:', err);
-      setError('Failed to delete college. Please try again.');
+      console.error('Error updating college status:', err);
+      setError(`Failed to ${collegeToDisable.currentState ? 'enable' : 'disable'} college. Please try again.`);
     } finally {
-      setShowDeleteConfirm(false);
-      setCollegeToDelete(null);
+      setShowDisableConfirm(false);
+      setCollegeToDisable(null);
     }
   };
 
-  const handleDeleteDepartment = async (departmentId) => {
-    setDepartmentToDelete(departmentId);
+  const handleDisableDepartment = async (departmentId, isCurrentlyDisabled) => {
+    setDepartmentToDisable({ id: departmentId, currentState: isCurrentlyDisabled });
     setShowDeleteDepartmentConfirm(true);
   };
 
-  const confirmDeleteDepartment = async () => {
+  const confirmDisableDepartment = async () => {
     try {
-      await deleteDepartment(departmentToDelete);
-      setDepartments(departments.filter(d => d.department_id !== departmentToDelete));
-      setSuccessMessage('Department deleted successfully');
+      const updatedDepartment = await updateDepartment(departmentToDisable.id, {
+        is_disabled: !departmentToDisable.currentState
+      });
+      setDepartments(departments.map(d => 
+        d.department_id === departmentToDisable.id ? updatedDepartment : d
+      ));
+      setSuccessMessage(`Department ${departmentToDisable.currentState ? 'enabled' : 'disabled'} successfully`);
       setTimeout(() => setSuccessMessage(''), 3000);
-      // Scroll to top immediately
       scrollToTop();
     } catch (err) {
-      console.error('Error deleting department:', err);
-      setError('Failed to delete department. Please try again.');
+      console.error('Error updating department status:', err);
+      setError(`Failed to ${departmentToDisable.currentState ? 'enable' : 'disable'} department. Please try again.`);
     } finally {
       setShowDeleteDepartmentConfirm(false);
-      setDepartmentToDelete(null);
+      setDepartmentToDisable(null);
     }
   };
 
@@ -335,11 +341,16 @@ const CollegeManagement = () => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleDeleteCollege(college.college_id);
+                    handleDisableCollege(college.college_id, college.is_disabled);
                   }}
-                  className="p-2 text-red-600 hover:text-red-800"
+                  className={`p-2 ${
+                    college.is_disabled 
+                      ? 'text-yellow-600 hover:text-yellow-800' 
+                      : 'text-red-600 hover:text-red-800'
+                  }`}
+                  title={college.is_disabled ? 'Enable College' : 'Disable College'}
                 >
-                  <FontAwesomeIcon icon={faTrash} />
+                  <FontAwesomeIcon icon={faBan} />
                 </button>
               </div>
             </div>
@@ -348,10 +359,20 @@ const CollegeManagement = () => {
               <div className="border-t">
                 <div className="p-4">
                   <div className="flex justify-between items-center mb-4">
-                    <h4 className="font-medium text-gray-700">Departments</h4>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-medium text-gray-700">Departments</h4>
+                      {college.is_disabled && (
+                        <span className="px-2 py-1 text-xs bg-red-100 text-red-800 rounded">Disabled</span>
+                      )}
+                    </div>
                     <button
                       onClick={() => handleAddDepartment(college.college_id)}
-                      className="flex items-center gap-2 px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                      className={`flex items-center gap-2 px-3 py-1 text-sm ${
+                        college.is_disabled 
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                      disabled={college.is_disabled}
                     >
                       <FontAwesomeIcon icon={faPlus} />
                       Add Department
@@ -378,6 +399,9 @@ const CollegeManagement = () => {
                             {department.head_user_id && (
                               <p className="text-sm text-gray-500">Head: {department.head_user_id.full_name}</p>
                             )}
+                            {department.is_disabled && (
+                              <span className="px-2 py-1 text-xs bg-red-100 text-red-800 rounded">Disabled</span>
+                            )}
                         </div>
                         <div className="flex items-center gap-2">
                           <button
@@ -387,10 +411,15 @@ const CollegeManagement = () => {
                             <FontAwesomeIcon icon={faEdit} />
                           </button>
                           <button
-                              onClick={() => handleDeleteDepartment(department.department_id)}
-                            className="p-1 text-red-600 hover:text-red-800"
+                            onClick={() => handleDisableDepartment(department.department_id, department.is_disabled)}
+                            className={`p-1 ${
+                              department.is_disabled 
+                                ? 'text-yellow-600 hover:text-yellow-800' 
+                                : 'text-red-600 hover:text-red-800'
+                            }`}
+                            title={department.is_disabled ? 'Enable Department' : 'Disable Department'}
                           >
-                            <FontAwesomeIcon icon={faTrash} />
+                            <FontAwesomeIcon icon={faBan} />
                           </button>
                         </div>
                       </div>
@@ -427,8 +456,8 @@ const CollegeManagement = () => {
         />
       )}
 
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
+      {/* Disable/Enable Confirmation Modal */}
+      {showDisableConfirm && (
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <div className="text-center">
@@ -437,33 +466,39 @@ const CollegeManagement = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Delete College</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                {collegeToDisable?.currentState ? 'Enable College' : 'Disable College'}
+              </h3>
               <p className="text-sm text-gray-500 mb-6">
-                Are you sure you want to delete this college? This action cannot be undone and will also delete all associated departments.
+                Are you sure you want to {collegeToDisable?.currentState ? 'enable' : 'disable'} this college?
               </p>
             </div>
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => {
-                  setShowDeleteConfirm(false);
-                  setCollegeToDelete(null);
+                  setShowDisableConfirm(false);
+                  setCollegeToDisable(null);
                 }}
                 className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
               >
                 Cancel
               </button>
               <button
-                onClick={confirmDeleteCollege}
-                className="px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700"
+                onClick={confirmDisableCollege}
+                className={`px-4 py-2 text-white rounded-lg ${
+                  collegeToDisable?.currentState 
+                    ? 'bg-green-600 hover:bg-green-700'
+                    : 'bg-red-600 hover:bg-red-700'
+                }`}
               >
-                Delete
+                {collegeToDisable?.currentState ? 'Enable' : 'Disable'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Delete Department Confirmation Modal */}
+      {/* Disable/Enable Department Confirmation Modal */}
       {showDeleteDepartmentConfirm && (
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
@@ -473,26 +508,32 @@ const CollegeManagement = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Delete Department</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                {departmentToDisable?.currentState ? 'Enable Department' : 'Disable Department'}
+              </h3>
               <p className="text-sm text-gray-500 mb-6">
-                Are you sure you want to delete this department? This action cannot be undone.
+                Are you sure you want to {departmentToDisable?.currentState ? 'enable' : 'disable'} this department?
               </p>
             </div>
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => {
                   setShowDeleteDepartmentConfirm(false);
-                  setDepartmentToDelete(null);
+                  setDepartmentToDisable(null);
                 }}
                 className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
               >
                 Cancel
               </button>
               <button
-                onClick={confirmDeleteDepartment}
-                className="px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700"
+                onClick={confirmDisableDepartment}
+                className={`px-4 py-2 text-white rounded-lg ${
+                  departmentToDisable?.currentState 
+                    ? 'bg-green-600 hover:bg-green-700'
+                    : 'bg-red-600 hover:bg-red-700'
+                }`}
               >
-                Delete
+                {departmentToDisable?.currentState ? 'Enable' : 'Disable'}
               </button>
             </div>
           </div>
