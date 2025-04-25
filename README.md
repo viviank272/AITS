@@ -1,2 +1,2 @@
-# AITS
-This is for an Academic Issue Tracking System for SDP
+# muk-tracker
+Academic Issue Tracking System
