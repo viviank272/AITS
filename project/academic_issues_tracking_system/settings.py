@@ -31,16 +31,19 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
-    "rest_framework",  
-    "corsheaders",
-    "aits.apps.AitsConfig",
-    "django.contrib.admin",
-    "django.contrib.auth",
-    "django.contrib.contenttypes",
-    "django.contrib.sessions",
-    "django.contrib.messages",
+    "rest_framework", 
+    'rest_framework.authtoken',  # For token-based authentication
+    'simple_history',  # For model history tracking
+    'corsheaders',  # For Cross-Origin Resource Sharing (CORS)
+    'aits.apps.AitsConfig',  # Our custom app
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages', 
     "django.contrib.staticfiles",
 ]
+
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
@@ -80,12 +83,27 @@ WSGI_APPLICATION = "academic_issues_tracking_system.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "aits_db",
+        "NAME": "test_db",
         "USER": "aits_admin",
         "PASSWORD": "qwerty!",
         "HOST": "127.0.0.1",
         "PORT": "5432",
     }
+}
+
+
+
+
+
+# REST Framework
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        # 'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
+    ],
+    # 'DEFAULT_PERMISSION_CLASSES': [
+    #     'rest_framework.permissions.IsAuthenticated',
+    # ]
 }
 
 
@@ -106,6 +124,8 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
+# settings.py
+AUTH_USER_MODEL = 'aits.User'
 
 
 # Internationalization

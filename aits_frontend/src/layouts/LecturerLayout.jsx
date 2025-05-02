@@ -1,0 +1,111 @@
+import React from 'react'
+import { Outlet } from 'react-router-dom'
+import { useContext } from 'react'
+import { AuthContext } from '../context/AuthContext'
+import { Link, useLocation } from 'react-router-dom'
+import useLogout from '../hooks/useLogout'
+import {
+  HomeIcon,
+  TicketIcon,
+  ClipboardDocumentListIcon,
+  ChatBubbleLeftRightIcon,
+  BellIcon,
+  ChartBarIcon,
+  Cog6ToothIcon,
+  ArrowLeftOnRectangleIcon
+} from '@heroicons/react/24/outline'
+import '../styles/lecturer.css'
+
+const LecturerLayout = () => {
+  const { user } = useContext(AuthContext)
+  const location = useLocation()
+  const logout = useLogout()
+
+  const handleLogout = (e) => {
+    e.preventDefault()
+    logout()
+  }
+
+  const navigation = [
+    { name: 'Dashboard', href: '/lecturer', icon: HomeIcon },
+    { name: 'Assigned Issues', href: '/lecturer/assigned', icon: TicketIcon },
+    { name: 'Department Issues', href: '/lecturer/department', icon: ClipboardDocumentListIcon },
+    { name: 'Messages', href: '/lecturer/messages', icon: ChatBubbleLeftRightIcon },
+    { name: 'Notifications', href: '/lecturer/notifications', icon: BellIcon },
+    { name: 'Reports', href: '/lecturer/reports', icon: ChartBarIcon },
+    { name: 'Settings', href: '/lecturer/settings', icon: Cog6ToothIcon }
+  ]
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-gray-100">
+      {/* Fixed Sidebar */}
+      <div className="fixed inset-y-0 flex w-64 flex-col">
+        {/* Sidebar component */}
+        <div className="flex min-h-0 flex-1 flex-col bg-[#1e2a3b] text-white">
+          {/* Lecturer Info */}
+          <div className="p-6 border-b border-gray-700">
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-xl font-semibold">
+                {user?.name?.split(' ').map(n => n[0]).join('')}
+              </div>
+              <div>
+                <h2 className="font-semibold">{user?.name || 'Dr. Patricia Lee'}</h2>
+                <p className="text-sm text-gray-300">{user?.department || 'Computer Science'}</p>
+              </div>
+            </div>
+            <div className="mt-4 text-sm text-gray-300">
+              Faculty ID: {user?.facultyId || 'F9876543'}
+            </div>
+          </div>
+
+          {/* Navigation */}
+          <div className="flex-1 overflow-y-auto">
+            <nav className="flex-1 py-4">
+              {navigation.map((item) => {
+                const isActive = location.pathname === item.href
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className={`flex items-center px-6 py-3 text-sm ${
+                      isActive 
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-300 hover:bg-[#2a3a4f] hover:text-white'
+                    }`}
+                  >
+                    <item.icon
+                      className={`mr-3 h-5 w-5 ${
+                        isActive
+                          ? 'text-white'
+                          : 'text-gray-400 group-hover:text-white'
+                      }`}
+                    />
+                    {item.name}
+                  </Link>
+                )
+              })}
+              
+              {/* Logout Button */}
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center px-6 py-3 text-sm text-gray-300 hover:bg-[#2a3a4f] hover:text-white"
+              >
+                <ArrowLeftOnRectangleIcon className="mr-3 h-5 w-5 text-gray-400" />
+                Logout
+              </button>
+            </nav>
+          </div>
+        </div>
+      </div>
+
+      {/* Main content */}
+      <div className="flex flex-1 flex-col pl-64">
+        <main className="flex-1 overflow-y-auto bg-gray-100">
+          <Outlet />
+        </main>
+      </div>
+    </div>
+  )
+}
+
+export default LecturerLayout
